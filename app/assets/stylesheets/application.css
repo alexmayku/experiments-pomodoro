@@ -1,0 +1,990 @@
+/*
+ * Pomodoro Timer App Styles
+ *
+ * Minimal, centered UI with responsive 2-column layout.
+ * Uses system fonts for clean, native feel.
+ */
+
+/* Reset and base styles */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #f5f7f9;
+  color: #1a1a2e;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===========================================
+   Two-Column Layout
+   =========================================== */
+
+.pomodoro-layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  transition: background-color 0.5s ease, grid-template-columns 0.3s ease;
+  position: relative;
+}
+
+/* Collapsed sidebar state */
+.pomodoro-layout.sidebar-collapsed {
+  grid-template-columns: 0 1fr;
+}
+
+/* Left column - History */
+.history-column {
+  background-color: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: padding 0.3s ease, opacity 0.3s ease;
+}
+
+.history-column.collapsed {
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Sidebar Toggle Button */
+.sidebar-toggle {
+  position: fixed;
+  left: 320px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  width: 24px;
+  height: 48px;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: left 0.3s ease, background-color 0.15s ease;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-toggle:hover {
+  background-color: #f3f4f6;
+}
+
+.sidebar-toggle-icon {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.pomodoro-layout.sidebar-collapsed .sidebar-toggle {
+  left: 0;
+  border-left: 1px solid #e5e7eb;
+  border-radius: 0 8px 8px 0;
+}
+
+/* Right column - Timer */
+.timer-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 0.75rem;
+}
+
+/* ===========================================
+   Visual State Indicators
+   =========================================== */
+
+/* Ready state - neutral light gray */
+.pomodoro-layout.ready-mode {
+  background-color: #f5f7f9;
+}
+
+.pomodoro-layout.ready-mode .timer-column {
+  background-color: #f5f7f9;
+}
+
+/* Focus mode - warm amber/orange tint for concentration */
+.pomodoro-layout.focus-mode {
+  background-color: #fef3e2;
+}
+
+.pomodoro-layout.focus-mode .timer-column {
+  background-color: #fef3e2;
+}
+
+.pomodoro-layout.focus-mode .timer-display {
+  color: #c2410c;
+}
+
+.pomodoro-layout.focus-mode .status-text {
+  color: #ea580c;
+  font-weight: 600;
+}
+
+/* Break mode - calming teal/green for relaxation */
+.pomodoro-layout.break-mode {
+  background-color: #e0f5f0;
+}
+
+.pomodoro-layout.break-mode .timer-column {
+  background-color: #e0f5f0;
+}
+
+.pomodoro-layout.break-mode .timer-display {
+  color: #0d9488;
+}
+
+.pomodoro-layout.break-mode .status-text {
+  color: #14b8a6;
+  font-weight: 600;
+}
+
+/* Break ending animation - pulse effect */
+@keyframes breakEndPulse {
+  0%, 100% {
+    background-color: #e0f5f0;
+  }
+  25% {
+    background-color: #a7f3d0;
+  }
+  50% {
+    background-color: #6ee7b7;
+  }
+  75% {
+    background-color: #a7f3d0;
+  }
+}
+
+@keyframes timerPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.pomodoro-layout.break-ending .timer-column {
+  animation: breakEndPulse 0.5s ease-in-out 3;
+}
+
+.pomodoro-layout.break-ending .timer-display {
+  animation: timerPulse 0.5s ease-in-out 3;
+  color: #059669;
+}
+
+.pomodoro-layout.break-ending .status-text {
+  color: #059669;
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+/* ===========================================
+   Timer Display
+   =========================================== */
+
+/* Active pomodoro title - shown above timer when running */
+.active-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #374151;
+  text-align: center;
+  padding: 0.5rem 1.5rem;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  max-width: 480px;
+  word-wrap: break-word;
+}
+
+.pomodoro-layout.focus-mode .active-title {
+  color: #9a3412;
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+.timer-display {
+  font-size: 5rem;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  color: #1a1a2e;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+/* Status text below timer */
+.status-text {
+  font-size: 1rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+  transition: color 0.3s ease, font-weight 0.3s ease;
+}
+
+/* ===========================================
+   Today's Count with Progress Fill
+   =========================================== */
+
+.today-count-wrapper {
+  margin-bottom: 1.5rem;
+}
+
+.today-count {
+  --progress: 0%;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.625rem 1.5rem;
+  background-color: #e8eef3;
+  border-radius: 9999px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  overflow: hidden;
+  transition: background-color 0.3s ease;
+}
+
+.today-count-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--progress);
+  background-color: #1f2937;
+  transition: width 0.5s ease;
+  border-radius: 9999px 0 0 9999px;
+}
+
+.today-count-text {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(
+    to right,
+    #ffffff 0%,
+    #ffffff var(--progress),
+    #1a1a2e var(--progress),
+    #1a1a2e 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  transition: background 0.5s ease;
+}
+
+/* Form card container */
+.form-card {
+  width: 100%;
+  max-width: 480px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  border: 1px solid #e5e7eb;
+}
+
+/* Form group */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+/* Labels */
+.form-group label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-bottom: 0.5rem;
+}
+
+/* Input fields */
+.form-group input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.9375rem;
+  color: #1a1a2e;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-group input::placeholder {
+  color: #9ca3af;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group input:disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* ===========================================
+   Combobox (Searchable Tag Input)
+   =========================================== */
+
+.combobox {
+  position: relative;
+}
+
+.combobox input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.9375rem;
+  color: #1a1a2e;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.combobox input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.combobox input:disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.combobox-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 50;
+}
+
+.combobox-option {
+  padding: 0.625rem 1rem;
+  font-size: 0.9375rem;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.combobox-option:hover {
+  background-color: #f3f4f6;
+}
+
+.combobox-option:first-child {
+  border-radius: 7px 7px 0 0;
+}
+
+.combobox-option:last-child {
+  border-radius: 0 0 7px 7px;
+}
+
+.combobox-option.hidden {
+  display: none;
+}
+
+.combobox-add-new {
+  padding: 0.625rem 1rem;
+  font-size: 0.9375rem;
+  color: #3b82f6;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-top: 1px solid #e5e7eb;
+  transition: background-color 0.1s ease;
+}
+
+.combobox-add-new:hover {
+  background-color: #eff6ff;
+}
+
+.combobox-add-new.hidden {
+  display: none;
+}
+
+.combobox-add-icon {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* Select fields (tags dropdown) - keeping for backward compatibility */
+.form-group select,
+.tags-select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.9375rem;
+  color: #1a1a2e;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.25rem;
+  padding-right: 2.5rem;
+}
+
+.form-group select:focus,
+.tags-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group select:disabled,
+.tags-select:disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Form hint text */
+.form-hint {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: 0.5rem 0;
+}
+
+/* New tag input */
+.new-tag-input {
+  margin-top: 0;
+}
+
+/* ===========================================
+   Utility Classes
+   =========================================== */
+
+.hidden {
+  display: none !important;
+}
+
+/* ===========================================
+   Button Group
+   =========================================== */
+
+.button-group {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+/* Start button */
+.start-button {
+  padding: 0.875rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #111827;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.start-button:hover:not(:disabled) {
+  background-color: #1f2937;
+}
+
+.start-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.start-button:disabled,
+.start-button.disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Stop button */
+.stop-button {
+  padding: 0.875rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #dc2626;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.stop-button:hover {
+  background-color: #b91c1c;
+}
+
+.stop-button:active {
+  transform: scale(0.98);
+}
+
+/* ===========================================
+   History Section (Left Column)
+   =========================================== */
+
+.history-section {
+  width: 100%;
+}
+
+.history-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.history-item {
+  --progress: 0%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  gap: 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Progress fill background for history items */
+.history-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--progress);
+  background-color: #1f2937;
+  transition: width 0.5s ease;
+  z-index: 0;
+}
+
+.history-date {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  font-size: 0.9375rem;
+  background: linear-gradient(
+    to right,
+    #ffffff 0%,
+    #ffffff var(--progress),
+    #374151 var(--progress),
+    #374151 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Progress pill for history count */
+.progress-pill {
+  --progress: inherit;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  background-color: #e5e7eb;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  overflow: hidden;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.progress-pill-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--progress);
+  background-color: #374151;
+  transition: width 0.5s ease;
+  border-radius: 9999px 0 0 9999px;
+}
+
+.progress-pill-text {
+  position: relative;
+  z-index: 1;
+  white-space: nowrap;
+  background: linear-gradient(
+    to right,
+    #ffffff 0%,
+    #ffffff var(--progress),
+    #6b7280 var(--progress),
+    #6b7280 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Empty history item (0 pomodoros) */
+.history-item-empty {
+  opacity: 0.6;
+}
+
+.history-item-empty .progress-pill {
+  background-color: transparent;
+  border: 1px solid #e5e7eb;
+}
+
+.history-item-empty .progress-pill-text {
+  background: none;
+  -webkit-text-fill-color: #9ca3af;
+}
+
+/* ===========================================
+   Top Navigation
+   =========================================== */
+
+.top-nav {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 50;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.nav-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.nav-button:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.nav-button-icon {
+  font-size: 1rem;
+}
+
+.nav-button-text {
+  font-weight: 500;
+}
+
+/* ===========================================
+   Modal
+   =========================================== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 1rem;
+  backdrop-filter: blur(2px);
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal-content {
+  background-color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: modalSlideIn 0.2s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin: 0;
+}
+
+.modal-close {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-close:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+/* ===========================================
+   Pie Chart
+   =========================================== */
+
+.pie-chart-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.pie-chart-container canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Tag Statistics Legend */
+.tag-stats-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background-color: #f9fafb;
+  border-radius: 8px;
+}
+
+.legend-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.legend-label {
+  flex: 1;
+  font-size: 0.9375rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+.legend-value {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.no-data-message {
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.9375rem;
+  padding: 2rem 1rem;
+}
+
+/* Empty Chart State */
+.empty-chart-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.empty-chart-placeholder {
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.empty-chart-icon {
+  width: 100%;
+  height: 100%;
+}
+
+.empty-chart-message {
+  font-size: 1rem;
+  color: #6b7280;
+  max-width: 280px;
+  line-height: 1.5;
+}
+
+/* ===========================================
+   Responsive Adjustments
+   =========================================== */
+
+/* Stack columns on narrow screens */
+@media (max-width: 768px) {
+  .pomodoro-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .pomodoro-layout.sidebar-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .history-column {
+    order: 2;
+    border-right: none;
+    border-top: 1px solid #e5e7eb;
+    padding: 1.5rem;
+  }
+
+  .history-column.collapsed {
+    display: none;
+  }
+
+  .timer-column {
+    order: 1;
+    min-height: 70vh;
+  }
+
+  .sidebar-toggle {
+    position: fixed;
+    left: auto;
+    right: 1rem;
+    bottom: 1rem;
+    top: auto;
+    transform: none;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .pomodoro-layout.sidebar-collapsed .sidebar-toggle {
+    left: auto;
+    border-left: 1px solid #e5e7eb;
+    border-radius: 50%;
+  }
+
+  .sidebar-toggle-icon {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 540px) {
+  .timer-display {
+    font-size: 3.5rem;
+  }
+
+  .form-card {
+    padding: 1.25rem 1.5rem;
+  }
+
+  .timer-column {
+    padding: 1.5rem;
+  }
+
+  .history-column {
+    padding: 1rem;
+  }
+
+  .top-nav {
+    top: 0.75rem;
+    right: 0.75rem;
+  }
+
+  .nav-button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+
+  .nav-button-text {
+    display: none;
+  }
+
+  .modal-content {
+    max-height: 85vh;
+    margin: 0.5rem;
+  }
+
+  .modal-header {
+    padding: 1rem;
+  }
+
+  .modal-body {
+    padding: 1rem;
+  }
+}

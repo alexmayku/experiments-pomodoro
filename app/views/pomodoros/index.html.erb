@@ -1,0 +1,178 @@
+<% daily_target = 11 %>
+
+<div class="pomodoro-layout"
+     data-controller="pomodoro-timer"
+     data-pomodoro-timer-today-count-value="<%= @today_count %>"
+     data-pomodoro-timer-today-date-value="<%= @today_date %>"
+     data-pomodoro-timer-daily-target-value="<%= daily_target %>"
+     data-pomodoro-timer-tag-statistics-value="<%= @tag_statistics.to_json %>"
+     data-pomodoro-timer-target="container">
+
+  <!-- Navigation Bar -->
+  <nav class="top-nav">
+    <button 
+      class="nav-button"
+      data-action="click->pomodoro-timer#openTagStats"
+      aria-label="View time by tag"
+    >
+      <span class="nav-button-icon">🕒</span>
+      <span class="nav-button-text">Time</span>
+    </button>
+  </nav>
+
+  <!-- Sidebar Toggle Button -->
+  <button 
+    class="sidebar-toggle"
+    data-pomodoro-timer-target="sidebarToggle"
+    data-action="click->pomodoro-timer#toggleSidebar"
+    aria-label="Toggle sidebar"
+  >
+    <span class="sidebar-toggle-icon" data-pomodoro-timer-target="sidebarToggleIcon">◀</span>
+  </button>
+
+  <!-- Left Column: History Section -->
+  <aside class="history-column" data-pomodoro-timer-target="sidebar">
+    <div class="history-section">
+      <h3 class="history-title">Past 5 Days</h3>
+      <div class="history-list">
+        <% @daily_history.each do |day| %>
+          <% progress_percent = [(day[:count].to_f / daily_target * 100), 100].min %>
+          <div class="history-item <%= day[:count] == 0 ? 'history-item-empty' : '' %>"
+               style="--progress: <%= progress_percent %>%;">
+            <span class="history-date"><%= format_history_date(day[:date]) %></span>
+            <div class="progress-pill">
+              <div class="progress-pill-fill"></div>
+              <span class="progress-pill-text"><%= day[:count] %>/<%= daily_target %></span>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right Column: Timer Section -->
+  <main class="timer-column">
+    <!-- Active Pomodoro Title (shown when running) -->
+    <div class="active-title hidden" data-pomodoro-timer-target="activeTitle"></div>
+
+    <!-- Timer Display -->
+    <div class="timer-display" data-pomodoro-timer-target="timer">25:00</div>
+
+    <!-- Status Text -->
+    <div class="status-text" data-pomodoro-timer-target="status">Ready to start</div>
+
+    <!-- Today's Count with Progress -->
+    <div class="today-count-wrapper">
+      <div class="today-count" 
+           data-pomodoro-timer-target="todayProgress"
+           style="--progress: <%= [(@today_count.to_f / daily_target * 100), 100].min %>%;">
+        <div class="today-count-fill"></div>
+        <span class="today-count-text">
+          Today:&nbsp;<span data-pomodoro-timer-target="count"><%= @today_count %></span>/<%= daily_target %>
+        </span>
+      </div>
+    </div>
+
+    <!-- Form Card -->
+    <div class="form-card">
+      <!-- Description -->
+      <div class="form-group">
+        <label for="description">Description</label>
+        <input
+          type="text"
+          id="description"
+          placeholder="What are you working on?"
+          data-pomodoro-timer-target="description"
+        >
+      </div>
+
+      <!-- Tags Combobox -->
+      <div class="form-group">
+        <label for="tag-input">Tag</label>
+        <div class="combobox" data-pomodoro-timer-target="combobox">
+          <input
+            type="text"
+            id="tag-input"
+            placeholder="Search or add a tag..."
+            data-pomodoro-timer-target="tagInput"
+            data-action="focus->pomodoro-timer#openTagDropdown input->pomodoro-timer#filterTags keydown->pomodoro-timer#handleTagKeydown"
+            autocomplete="off"
+          >
+          <div class="combobox-dropdown hidden" data-pomodoro-timer-target="tagDropdown">
+            <% @available_tags.each do |tag| %>
+              <div class="combobox-option" 
+                   data-tag="<%= tag %>"
+                   data-action="click->pomodoro-timer#selectTag">
+                <%= tag %>
+              </div>
+            <% end %>
+            <div class="combobox-add-new hidden" 
+                 data-pomodoro-timer-target="addNewOption"
+                 data-action="click->pomodoro-timer#addNewTag">
+              <span class="combobox-add-icon">+</span>
+              <span>Add "<span data-pomodoro-timer-target="addNewText"></span>"</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Button Group -->
+    <div class="button-group" data-pomodoro-timer-target="buttonGroup">
+      <!-- Start Button -->
+      <button
+        class="start-button"
+        data-pomodoro-timer-target="startButton"
+        data-action="click->pomodoro-timer#start"
+      >
+        Start 
+      </button>
+
+      <!-- Stop Button (hidden by default, shown during pomodoro) -->
+      <button
+        class="stop-button hidden"
+        data-pomodoro-timer-target="stopButton"
+        data-action="click->pomodoro-timer#stop"
+      >
+        Stop
+      </button>
+    </div>
+  </main>
+
+  <!-- Time by Tag Modal -->
+  <div class="modal-overlay hidden" data-pomodoro-timer-target="tagStatsModal" data-action="click->pomodoro-timer#handleModalClick">
+    <div class="modal-content" data-modal-content>
+      <div class="modal-header">
+        <h2 class="modal-title">Time by Tag</h2>
+        <button class="modal-close" data-action="click->pomodoro-timer#closeTagStats" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <% if @tag_statistics.empty? %>
+          <div class="empty-chart-state">
+            <div class="empty-chart-placeholder">
+              <svg viewBox="0 0 100 100" class="empty-chart-icon">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" stroke-width="8"/>
+                <path d="M50 10 A40 40 0 0 1 90 50" fill="none" stroke="#d1d5db" stroke-width="8" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <p class="empty-chart-message">Complete your first pomodoro with a tag to start tracking time</p>
+          </div>
+        <% else %>
+          <div class="pie-chart-container" data-pomodoro-timer-target="pieChartContainer">
+            <canvas data-pomodoro-timer-target="pieChart" width="300" height="300"></canvas>
+          </div>
+          <div class="tag-stats-legend" data-pomodoro-timer-target="tagStatsLegend">
+            <% total = @tag_statistics.sum { |s| s[:count] } %>
+            <% @tag_statistics.each_with_index do |stat, index| %>
+              <div class="legend-item">
+                <span class="legend-color" data-color-index="<%= index %>"></span>
+                <span class="legend-label"><%= stat[:tag] %></span>
+                <span class="legend-value"><%= stat[:count] %> (<%= ((stat[:count].to_f / total) * 100).round(1) %>%)</span>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
