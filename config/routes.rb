@@ -16,6 +16,9 @@ Rails.application.routes.draw do
 
   # Google Tasks
   resources :tasks, only: [:index] do
+    member do
+      post :complete
+    end
     collection do
       get :lists
       post :select_list

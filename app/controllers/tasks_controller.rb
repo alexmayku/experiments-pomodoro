@@ -65,6 +65,20 @@ class TasksController < ApplicationController
     redirect_to lists_tasks_path, alert: "Failed to save task list selection."
   end
 
+  # POST /tasks/:id/complete
+  # Marks a task as completed in Google Tasks
+  def complete
+    google_tasks_service.complete_task(params[:id])
+    render json: { success: true }
+  rescue GoogleTasksService::AuthorizationError
+    session.delete(:user_id)
+    render json: { success: false, error: "Session expired", reauth: true }, status: :unauthorized
+  rescue GoogleTasksService::ListNotFoundError => e
+    render json: { success: false, error: e.message }, status: :not_found
+  rescue GoogleTasksService::Error => e
+    render json: { success: false, error: e.message }, status: :internal_server_error
+  end
+
   private
 
   def google_tasks_service

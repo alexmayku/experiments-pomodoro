@@ -66,7 +66,8 @@ body {
   flex-direction: column;
   overflow: hidden;
   transition: padding 0.3s ease, opacity 0.3s ease;
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
 }
 
 .history-column.collapsed {
@@ -124,7 +125,8 @@ body {
   flex-direction: column;
   overflow: hidden;
   transition: padding 0.3s ease, opacity 0.3s ease;
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
 }
 
 .tasks-column.collapsed {
@@ -154,6 +156,7 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .tasks-header-row {
@@ -188,6 +191,7 @@ body {
 .tasks-content {
   flex: 1;
   overflow-y: auto;
+  min-height: 0; /* Required for flex children to scroll properly */
 }
 
 /* Tasks Loading State */
@@ -238,6 +242,65 @@ body {
   font-size: 0.8125rem;
 }
 
+/* Clickable tasks */
+.task-item-clickable {
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.task-item-clickable:hover {
+  background-color: #f3f4f6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.task-item-clickable:active {
+  transform: scale(0.98);
+}
+
+.task-item-selected {
+  background-color: #dbeafe !important;
+  border-color: #3b82f6;
+}
+
+/* Task checkbox interactions */
+.task-checkbox {
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.task-checkbox:hover {
+  transform: scale(1.1);
+}
+
+.task-checkbox:hover .task-checkbox-icon {
+  color: #3b82f6;
+}
+
+.task-checkbox-completing .task-checkbox-icon {
+  color: #9ca3af;
+  animation: pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.task-checkbox-completed .task-checkbox-icon {
+  color: #10b981;
+}
+
+.task-item-completed {
+  opacity: 0.5;
+  text-decoration: line-through;
+  transition: opacity 0.3s ease;
+}
+
+.task-item-completed .task-title {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
 .tasks-empty-list {
   text-align: center;
   padding: 2rem 1rem;
@@ -255,8 +318,59 @@ body {
   text-decoration: underline;
 }
 
-/* Right column - Timer */
+/* Tasks Sidebar Footer */
+.tasks-footer {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tasks-footer-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.tasks-footer-link:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.tasks-footer-icon {
+  font-size: 1rem;
+}
+
+.tasks-signout-link {
+  color: #dc2626;
+}
+
+.tasks-signout-link:hover {
+  background-color: #fef2f2;
+  color: #b91c1c;
+}
+
+/* Fix button_to form in tasks footer */
+.tasks-footer form {
+  display: contents;
+}
+
+/* Center column - Timer */
 .timer-column {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -837,19 +951,13 @@ body {
    =========================================== */
 
 .top-nav {
-  position: fixed;
+  position: absolute;
   top: 1rem;
   left: 0;
   right: 0;
-  z-index: 50;
   display: flex;
   justify-content: center;
   gap: 0.5rem;
-  pointer-events: none; /* Allow clicks to pass through the container */
-}
-
-.top-nav > * {
-  pointer-events: auto; /* Re-enable clicks on buttons */
 }
 
 .nav-button {
@@ -1154,9 +1262,6 @@ body {
 
   .top-nav {
     top: 0.75rem;
-    left: 0;
-    right: 0;
-    transform: none;
   }
 
   .nav-button {

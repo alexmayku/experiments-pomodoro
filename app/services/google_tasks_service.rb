@@ -42,6 +42,32 @@ class GoogleTasksService
     raise RateLimitError, "Rate limit exceeded. Please try again later."
   end
 
+  # Mark a task as completed
+  # @param task_id [String] The task ID to complete
+  # @param list_id [String, nil] The task list ID (uses user's default if nil)
+  # @return [Boolean] true if successful
+  def complete_task(task_id, list_id = nil)
+    list_id ||= @user.google_tasks_list_id
+    raise ListNotFoundError, "No task list ID specified" if list_id.blank?
+
+    ensure_valid_token!
+    
+    # Create a task object with completed status
+    task = Google::Apis::TasksV1::Task.new(
+      id: task_id,
+      status: "completed"
+    )
+    
+    client.patch_task(list_id, task_id, task)
+    true
+  rescue Google::Apis::AuthorizationError => e
+    handle_authorization_error_for_complete(e, task_id, list_id)
+  rescue Google::Apis::ClientError => e
+    handle_client_error(e)
+  rescue Google::Apis::RateLimitError
+    raise RateLimitError, "Rate limit exceeded. Please try again later."
+  end
+
   private
 
   def fetch_incomplete_tasks(list_id)
@@ -120,6 +146,17 @@ class GoogleTasksService
     @user.refresh_access_token!
     @client = nil
     fetch_all_task_lists
+  rescue Signet::AuthorizationError
+    raise AuthorizationError, "Unable to authenticate with Google. Please sign in again."
+  end
+
+  def handle_authorization_error_for_complete(error, task_id, list_id)
+    @user.refresh_access_token!
+    @client = nil
+    
+    task = Google::Apis::TasksV1::Task.new(id: task_id, status: "completed")
+    client.patch_task(list_id, task_id, task)
+    true
   rescue Signet::AuthorizationError
     raise AuthorizationError, "Unable to authenticate with Google. Please sign in again."
   end

@@ -1,6 +1,6 @@
 <% daily_target = 11 %>
 
-<div class="pomodoro-layout"
+<div class="pomodoro-layout tasks-sidebar-open"
      data-controller="pomodoro-timer"
      data-pomodoro-timer-today-count-value="<%= @today_count %>"
      data-pomodoro-timer-today-date-value="<%= @today_date %>"
@@ -9,44 +9,6 @@
      data-pomodoro-timer-user-signed-in-value="<%= user_signed_in? %>"
      data-pomodoro-timer-has-task-list-value="<%= user_signed_in? && current_user.google_tasks_list_id.present? %>"
      data-pomodoro-timer-target="container">
-
-  <!-- Navigation Bar -->
-  <nav class="top-nav">
-    <% if user_signed_in? %>
-      <% if current_user.google_tasks_list_id.present? %>
-        <button 
-          class="nav-button"
-          data-action="click->pomodoro-timer#toggleTasksSidebar"
-          aria-label="Toggle tasks sidebar"
-        >
-          <span class="nav-button-icon">✓</span>
-          <span class="nav-button-text">Tasks</span>
-        </button>
-      <% else %>
-        <%= link_to lists_tasks_path, class: "nav-button" do %>
-          <span class="nav-button-icon">✓</span>
-          <span class="nav-button-text">Setup Tasks</span>
-        <% end %>
-      <% end %>
-      <%= button_to logout_path, method: :delete, class: "nav-button nav-button-secondary" do %>
-        <span class="nav-button-icon">↪</span>
-        <span class="nav-button-text">Sign Out</span>
-      <% end %>
-    <% else %>
-      <%= button_to "/auth/google_oauth2", method: :post, data: { turbo: false }, class: "nav-button nav-button-google" do %>
-        <span class="nav-button-icon">G</span>
-        <span class="nav-button-text">Connect Google</span>
-      <% end %>
-    <% end %>
-    <button 
-      class="nav-button"
-      data-action="click->pomodoro-timer#openTagStats"
-      aria-label="View time by tag"
-    >
-      <span class="nav-button-icon">🕒</span>
-      <span class="nav-button-text">Time</span>
-    </button>
-  </nav>
 
   <!-- Sidebar Toggle Button -->
   <button 
@@ -78,8 +40,26 @@
     </div>
   </aside>
 
-  <!-- Right Column: Timer Section -->
+  <!-- Center Column: Timer Section -->
   <main class="timer-column">
+    <!-- Navigation Bar (inside timer column so it moves with content) -->
+    <nav class="top-nav">
+      <% unless user_signed_in? %>
+        <%= button_to "/auth/google_oauth2", method: :post, data: { turbo: false }, class: "nav-button nav-button-google" do %>
+          <span class="nav-button-icon">G</span>
+          <span class="nav-button-text">Connect Google</span>
+        <% end %>
+      <% end %>
+      <button 
+        class="nav-button"
+        data-action="click->pomodoro-timer#openTagStats"
+        aria-label="View time by tag"
+      >
+        <span class="nav-button-icon">🕒</span>
+        <span class="nav-button-text">Time</span>
+      </button>
+    </nav>
+
     <!-- Active Pomodoro Title (shown when running) -->
     <div class="active-title hidden" data-pomodoro-timer-target="activeTitle"></div>
 
@@ -168,13 +148,10 @@
   </main>
 
   <!-- Right Column: Tasks Sidebar -->
-  <aside class="tasks-column collapsed" data-pomodoro-timer-target="tasksSidebar">
+  <aside class="tasks-column" data-pomodoro-timer-target="tasksSidebar">
     <div class="tasks-section">
       <div class="tasks-header-row">
         <h3 class="tasks-title">Google Tasks</h3>
-        <%= link_to lists_tasks_path, class: "tasks-settings-link" do %>
-          ⚙
-        <% end if user_signed_in? %>
       </div>
       
       <div class="tasks-content" data-pomodoro-timer-target="tasksContent">
@@ -197,6 +174,19 @@
         <div class="tasks-list hidden" data-pomodoro-timer-target="tasksList"></div>
         <div class="tasks-error hidden" data-pomodoro-timer-target="tasksError"></div>
       </div>
+      
+      <% if user_signed_in? %>
+        <div class="tasks-footer">
+          <%= link_to lists_tasks_path, class: "tasks-footer-link" do %>
+            <span class="tasks-footer-icon">⚙</span>
+            <span>Change List</span>
+          <% end %>
+          <%= button_to logout_path, method: :delete, class: "tasks-footer-link tasks-signout-link" do %>
+            <span class="tasks-footer-icon">↪</span>
+            <span>Sign Out</span>
+          <% end %>
+        </div>
+      <% end %>
     </div>
   </aside>
 

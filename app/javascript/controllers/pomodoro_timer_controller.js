@@ -55,7 +55,7 @@ export default class extends Controller {
     this.pomodoroStartedAt = null
     this.notificationPermissionRequested = false
     this.sidebarCollapsed = false
-    this.tasksSidebarCollapsed = true // Tasks sidebar starts collapsed
+    this.tasksSidebarCollapsed = false // Tasks sidebar starts open
     this.tasksLoaded = false
 
     this.updateDisplay()
@@ -66,6 +66,11 @@ export default class extends Controller {
     // Set up click outside listener for combobox
     this.handleClickOutside = this.handleClickOutside.bind(this)
     document.addEventListener("click", this.handleClickOutside)
+    
+    // Load tasks on connect if user has a task list configured
+    if (this.hasTaskListValue && !this.tasksLoaded) {
+      this.fetchTasks()
+    }
   }
 
   disconnect() {
@@ -180,8 +185,8 @@ export default class extends Controller {
       `
     } else {
       const tasksHtml = tasks.map(task => `
-        <div class="task-item">
-          <div class="task-checkbox">
+        <div class="task-item task-item-clickable" data-task-id="${this.escapeHtml(task.id || "")}" data-task-title="${this.escapeHtml(task.title || "")}">
+          <div class="task-checkbox" data-task-id="${this.escapeHtml(task.id || "")}">
             <span class="task-checkbox-icon">○</span>
           </div>
           <div class="task-content">
@@ -193,9 +198,109 @@ export default class extends Controller {
       `).join("")
       
       this.tasksListTarget.innerHTML = tasksHtml
+      
+      // Add click handlers to task content (for selecting as description)
+      this.tasksListTarget.querySelectorAll(".task-content").forEach(contentEl => {
+        contentEl.addEventListener("click", (e) => this.selectTaskForPomodoro(e))
+      })
+      
+      // Add click handlers to checkboxes (for completing tasks)
+      this.tasksListTarget.querySelectorAll(".task-checkbox").forEach(checkboxEl => {
+        checkboxEl.addEventListener("click", (e) => this.completeTask(e))
+      })
     }
     
     this.tasksListTarget.classList.remove("hidden")
+  }
+
+  /**
+   * Select a task to use as the pomodoro description
+   */
+  selectTaskForPomodoro(event) {
+    event.stopPropagation()
+    const taskEl = event.currentTarget.closest(".task-item")
+    const taskTitle = taskEl?.dataset.taskTitle
+    
+    if (taskTitle && this.hasDescriptionTarget) {
+      this.descriptionTarget.value = taskTitle
+      
+      // Visual feedback - briefly highlight the selected task
+      taskEl.classList.add("task-item-selected")
+      setTimeout(() => {
+        taskEl.classList.remove("task-item-selected")
+      }, 300)
+      
+      // Focus the description field
+      this.descriptionTarget.focus()
+    }
+  }
+
+  /**
+   * Complete a task in Google Tasks
+   */
+  async completeTask(event) {
+    event.stopPropagation()
+    
+    const checkboxEl = event.currentTarget
+    const taskEl = checkboxEl.closest(".task-item")
+    const taskId = checkboxEl.dataset.taskId
+    
+    if (!taskId) return
+    
+    // Visual feedback - show completing state
+    checkboxEl.classList.add("task-checkbox-completing")
+    checkboxEl.querySelector(".task-checkbox-icon").textContent = "..."
+    
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+    
+    try {
+      const response = await fetch(`/tasks/${encodeURIComponent(taskId)}/complete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+          "Accept": "application/json"
+        }
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok && data.success) {
+        // Show completed state briefly, then remove task
+        checkboxEl.classList.remove("task-checkbox-completing")
+        checkboxEl.classList.add("task-checkbox-completed")
+        checkboxEl.querySelector(".task-checkbox-icon").textContent = "✓"
+        taskEl.classList.add("task-item-completed")
+        
+        // Remove from list after animation
+        setTimeout(() => {
+          taskEl.remove()
+          
+          // Check if list is now empty
+          if (this.tasksListTarget.querySelectorAll(".task-item").length === 0) {
+            this.tasksListTarget.innerHTML = `
+              <div class="tasks-empty-list">
+                <p>No incomplete tasks</p>
+              </div>
+            `
+          }
+        }, 500)
+      } else {
+        // Show error state
+        checkboxEl.classList.remove("task-checkbox-completing")
+        checkboxEl.querySelector(".task-checkbox-icon").textContent = "○"
+        console.error("Failed to complete task:", data.error)
+        
+        if (data.reauth) {
+          window.location.reload()
+        }
+      }
+    } catch (error) {
+      // Reset on error
+      checkboxEl.classList.remove("task-checkbox-completing")
+      checkboxEl.querySelector(".task-checkbox-icon").textContent = "○"
+      console.error("Error completing task:", error)
+    }
   }
 
   /**
