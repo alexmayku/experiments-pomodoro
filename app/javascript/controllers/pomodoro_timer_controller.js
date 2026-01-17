@@ -20,8 +20,8 @@ import { Controller } from "@hotwired/stimulus"
  * - Break ending: Pulse animation before returning to ready
  */
 export default class extends Controller {
-  static targets = ["timer", "status", "startButton", "stopButton", "description", "tagInput", "tagDropdown", "addNewOption", "addNewText", "combobox", "count", "container", "activeTitle", "sidebar", "sidebarToggle", "sidebarToggleIcon", "todayProgress", "tagStatsModal", "pieChart", "pieChartContainer", "tagStatsLegend"]
-  static values = { todayCount: Number, todayDate: String, dailyTarget: Number, tagStatistics: Array }
+  static targets = ["timer", "status", "startButton", "stopButton", "description", "tagInput", "tagDropdown", "addNewOption", "addNewText", "combobox", "count", "container", "activeTitle", "sidebar", "sidebarToggle", "sidebarToggleIcon", "todayProgress", "tagStatsModal", "pieChart", "pieChartContainer", "tagStatsLegend", "tasksSidebar", "tasksSidebarToggle", "tasksSidebarToggleIcon", "tasksContent", "tasksList", "tasksLoading", "tasksError"]
+  static values = { todayCount: Number, todayDate: String, dailyTarget: Number, tagStatistics: Array, userSignedIn: Boolean, hasTaskList: Boolean }
   
   // Colors for pie chart slices - distinct, accessible palette
   static PIE_COLORS = [
@@ -55,6 +55,8 @@ export default class extends Controller {
     this.pomodoroStartedAt = null
     this.notificationPermissionRequested = false
     this.sidebarCollapsed = false
+    this.tasksSidebarCollapsed = true // Tasks sidebar starts collapsed
+    this.tasksLoaded = false
 
     this.updateDisplay()
     this.updateVisualState()
@@ -72,7 +74,7 @@ export default class extends Controller {
   }
 
   /**
-   * Toggle the sidebar visibility
+   * Toggle the left sidebar (history) visibility
    */
   toggleSidebar() {
     this.sidebarCollapsed = !this.sidebarCollapsed
@@ -88,6 +90,147 @@ export default class extends Controller {
     if (this.hasSidebarToggleIconTarget) {
       this.sidebarToggleIconTarget.textContent = this.sidebarCollapsed ? "▶" : "◀"
     }
+  }
+
+  /**
+   * Toggle the right sidebar (tasks) visibility
+   */
+  toggleTasksSidebar() {
+    this.tasksSidebarCollapsed = !this.tasksSidebarCollapsed
+    
+    if (this.hasTasksSidebarTarget) {
+      this.tasksSidebarTarget.classList.toggle("collapsed", this.tasksSidebarCollapsed)
+    }
+    
+    if (this.hasContainerTarget) {
+      // Only toggle the "open" class - no need for a "collapsed" class
+      this.containerTarget.classList.toggle("tasks-sidebar-open", !this.tasksSidebarCollapsed)
+    }
+    
+    if (this.hasTasksSidebarToggleIconTarget) {
+      this.tasksSidebarToggleIconTarget.textContent = this.tasksSidebarCollapsed ? "◀" : "▶"
+    }
+    
+    // Load tasks when opening the sidebar for the first time
+    if (!this.tasksSidebarCollapsed && !this.tasksLoaded && this.hasTaskListValue) {
+      this.fetchTasks()
+    }
+  }
+
+  /**
+   * Fetch tasks from Google Tasks API
+   */
+  async fetchTasks() {
+    if (!this.hasTasksListTarget) return
+    
+    // Show loading state
+    if (this.hasTasksLoadingTarget) {
+      this.tasksLoadingTarget.classList.remove("hidden")
+    }
+    if (this.hasTasksErrorTarget) {
+      this.tasksErrorTarget.classList.add("hidden")
+    }
+    this.tasksListTarget.classList.add("hidden")
+
+    try {
+      const response = await fetch("/tasks.json", {
+        headers: {
+          "Accept": "application/json"
+        }
+      })
+
+      const data = await response.json()
+
+      // Hide loading
+      if (this.hasTasksLoadingTarget) {
+        this.tasksLoadingTarget.classList.add("hidden")
+      }
+
+      if (response.ok && data.success) {
+        this.tasksLoaded = true
+        this.renderTasks(data.tasks)
+      } else {
+        this.showTasksError(data.error || "Failed to load tasks")
+        
+        if (data.reauth) {
+          // User needs to re-authenticate
+          window.location.reload()
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching tasks:", error)
+      if (this.hasTasksLoadingTarget) {
+        this.tasksLoadingTarget.classList.add("hidden")
+      }
+      this.showTasksError("Failed to connect to Google Tasks")
+    }
+  }
+
+  /**
+   * Render tasks in the sidebar
+   */
+  renderTasks(tasks) {
+    if (!this.hasTasksListTarget) return
+
+    if (tasks.length === 0) {
+      this.tasksListTarget.innerHTML = `
+        <div class="tasks-empty-list">
+          <p>No incomplete tasks</p>
+        </div>
+      `
+    } else {
+      const tasksHtml = tasks.map(task => `
+        <div class="task-item">
+          <div class="task-checkbox">
+            <span class="task-checkbox-icon">○</span>
+          </div>
+          <div class="task-content">
+            <span class="task-title">${this.escapeHtml(task.title || "Untitled")}</span>
+            ${task.notes ? `<p class="task-notes">${this.escapeHtml(task.notes)}</p>` : ""}
+            ${task.due ? `<span class="task-due">Due: ${this.formatDate(task.due)}</span>` : ""}
+          </div>
+        </div>
+      `).join("")
+      
+      this.tasksListTarget.innerHTML = tasksHtml
+    }
+    
+    this.tasksListTarget.classList.remove("hidden")
+  }
+
+  /**
+   * Show an error message in the tasks sidebar
+   */
+  showTasksError(message) {
+    if (!this.hasTasksErrorTarget) return
+    
+    this.tasksErrorTarget.innerHTML = `<p>${this.escapeHtml(message)}</p>`
+    this.tasksErrorTarget.classList.remove("hidden")
+  }
+
+  /**
+   * Escape HTML to prevent XSS
+   */
+  escapeHtml(text) {
+    const div = document.createElement("div")
+    div.textContent = text
+    return div.innerHTML
+  }
+
+  /**
+   * Format a date string for display
+   */
+  formatDate(dateString) {
+    const date = new Date(dateString)
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+  }
+
+  /**
+   * Refresh tasks (can be called to reload)
+   */
+  refreshTasks() {
+    this.tasksLoaded = false
+    this.fetchTasks()
   }
 
   /**

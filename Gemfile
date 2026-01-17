@@ -17,6 +17,11 @@ gem "stimulus-rails"
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
 gem "jbuilder"
 
+# Google OAuth and Tasks API
+gem "omniauth-google-oauth2"
+gem "omniauth-rails_csrf_protection"
+gem "google-apis-tasks_v1"
+
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 # gem "bcrypt", "~> 3.1.7"
 

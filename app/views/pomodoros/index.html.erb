@@ -6,10 +6,38 @@
      data-pomodoro-timer-today-date-value="<%= @today_date %>"
      data-pomodoro-timer-daily-target-value="<%= daily_target %>"
      data-pomodoro-timer-tag-statistics-value="<%= @tag_statistics.to_json %>"
+     data-pomodoro-timer-user-signed-in-value="<%= user_signed_in? %>"
+     data-pomodoro-timer-has-task-list-value="<%= user_signed_in? && current_user.google_tasks_list_id.present? %>"
      data-pomodoro-timer-target="container">
 
   <!-- Navigation Bar -->
   <nav class="top-nav">
+    <% if user_signed_in? %>
+      <% if current_user.google_tasks_list_id.present? %>
+        <button 
+          class="nav-button"
+          data-action="click->pomodoro-timer#toggleTasksSidebar"
+          aria-label="Toggle tasks sidebar"
+        >
+          <span class="nav-button-icon">✓</span>
+          <span class="nav-button-text">Tasks</span>
+        </button>
+      <% else %>
+        <%= link_to lists_tasks_path, class: "nav-button" do %>
+          <span class="nav-button-icon">✓</span>
+          <span class="nav-button-text">Setup Tasks</span>
+        <% end %>
+      <% end %>
+      <%= button_to logout_path, method: :delete, class: "nav-button nav-button-secondary" do %>
+        <span class="nav-button-icon">↪</span>
+        <span class="nav-button-text">Sign Out</span>
+      <% end %>
+    <% else %>
+      <%= button_to "/auth/google_oauth2", method: :post, data: { turbo: false }, class: "nav-button nav-button-google" do %>
+        <span class="nav-button-icon">G</span>
+        <span class="nav-button-text">Connect Google</span>
+      <% end %>
+    <% end %>
     <button 
       class="nav-button"
       data-action="click->pomodoro-timer#openTagStats"
@@ -138,6 +166,49 @@
       </button>
     </div>
   </main>
+
+  <!-- Right Column: Tasks Sidebar -->
+  <aside class="tasks-column collapsed" data-pomodoro-timer-target="tasksSidebar">
+    <div class="tasks-section">
+      <div class="tasks-header-row">
+        <h3 class="tasks-title">Google Tasks</h3>
+        <%= link_to lists_tasks_path, class: "tasks-settings-link" do %>
+          ⚙
+        <% end if user_signed_in? %>
+      </div>
+      
+      <div class="tasks-content" data-pomodoro-timer-target="tasksContent">
+        <% if user_signed_in? && current_user.google_tasks_list_id.present? %>
+          <div class="tasks-loading" data-pomodoro-timer-target="tasksLoading">
+            <span class="loading-spinner"></span>
+            <span>Loading tasks...</span>
+          </div>
+        <% elsif user_signed_in? %>
+          <div class="tasks-empty">
+            <p>No task list selected.</p>
+            <%= link_to "Select a list", lists_tasks_path, class: "tasks-setup-link" %>
+          </div>
+        <% else %>
+          <div class="tasks-empty">
+            <p>Connect Google to see your tasks.</p>
+          </div>
+        <% end %>
+        
+        <div class="tasks-list hidden" data-pomodoro-timer-target="tasksList"></div>
+        <div class="tasks-error hidden" data-pomodoro-timer-target="tasksError"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right Sidebar Toggle Button -->
+  <button 
+    class="sidebar-toggle sidebar-toggle-right"
+    data-pomodoro-timer-target="tasksSidebarToggle"
+    data-action="click->pomodoro-timer#toggleTasksSidebar"
+    aria-label="Toggle tasks sidebar"
+  >
+    <span class="sidebar-toggle-icon" data-pomodoro-timer-target="tasksSidebarToggleIcon">▶</span>
+  </button>
 
   <!-- Time by Tag Modal -->
   <div class="modal-overlay hidden" data-pomodoro-timer-target="tagStatsModal" data-action="click->pomodoro-timer#handleModalClick">

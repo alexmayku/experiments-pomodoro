@@ -1,0 +1,42 @@
+<div class="tasks-page">
+  <div class="tasks-header">
+    <h1 class="tasks-title">Google Tasks</h1>
+    <%= link_to "Back to Timer", root_path, class: "back-link" %>
+  </div>
+
+  <% if @error.present? %>
+    <div class="tasks-error">
+      <p><%= @error %></p>
+    </div>
+  <% end %>
+
+  <% if @tasks.present? %>
+    <div class="tasks-list">
+      <% @tasks.each do |task| %>
+        <div class="task-item">
+          <div class="task-checkbox">
+            <span class="task-checkbox-icon">○</span>
+          </div>
+          <div class="task-content">
+            <span class="task-title"><%= task[:title] %></span>
+            <% if task[:notes].present? %>
+              <p class="task-notes"><%= task[:notes] %></p>
+            <% end %>
+            <% if task[:due].present? %>
+              <span class="task-due">Due: <%= task[:due].strftime("%b %d, %Y") %></span>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="tasks-empty">
+      <p>No incomplete tasks in this list.</p>
+    </div>
+  <% end %>
+
+  <div class="tasks-actions">
+    <%= link_to "Change Task List", lists_tasks_path, class: "btn-secondary" %>
+  </div>
+</div>
+

@@ -1,0 +1,32 @@
+<div class="tasks-page">
+  <div class="tasks-header">
+    <h1 class="tasks-title">Select a Task List</h1>
+    <%= link_to "Back to Timer", root_path, class: "back-link" %>
+  </div>
+
+  <% if @error.present? %>
+    <div class="tasks-error">
+      <p><%= @error %></p>
+    </div>
+  <% end %>
+
+  <% if @task_lists.present? %>
+    <div class="task-lists">
+      <% @task_lists.each do |list| %>
+        <div class="task-list-item">
+          <%= button_to list[:title], select_list_tasks_path(list_id: list[:id]), 
+              method: :post, 
+              class: "task-list-button #{current_user&.google_tasks_list_id == list[:id] ? 'selected' : ''}" %>
+          <% if current_user&.google_tasks_list_id == list[:id] %>
+            <span class="task-list-selected-badge">Selected</span>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="tasks-empty">
+      <p>No task lists found in your Google account.</p>
+    </div>
+  <% end %>
+</div>
+

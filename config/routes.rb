@@ -9,6 +9,19 @@ Rails.application.routes.draw do
   # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
   # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
 
+  # OmniAuth routes
+  get "/auth/:provider/callback", to: "sessions#create"
+  get "/auth/failure", to: "sessions#failure"
+  delete "/logout", to: "sessions#destroy", as: :logout
+
+  # Google Tasks
+  resources :tasks, only: [:index] do
+    collection do
+      get :lists
+      post :select_list
+    end
+  end
+
   # Pomodoro timer app
   root "pomodoros#index"
   resources :pomodoros, only: [:create] do

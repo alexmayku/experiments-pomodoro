@@ -26,20 +26,35 @@ body {
 }
 
 /* ===========================================
-   Two-Column Layout
+   Three-Column Layout
    =========================================== */
 
 .pomodoro-layout {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 280px 1fr;
   transition: background-color 0.5s ease, grid-template-columns 0.3s ease;
   position: relative;
 }
 
-/* Collapsed sidebar state */
+/* Left sidebar collapsed */
 .pomodoro-layout.sidebar-collapsed {
   grid-template-columns: 0 1fr;
+}
+
+/* Right sidebar open - add third column */
+.pomodoro-layout.tasks-sidebar-open {
+  grid-template-columns: 280px 1fr 320px;
+}
+
+/* Left collapsed + Right open */
+.pomodoro-layout.sidebar-collapsed.tasks-sidebar-open {
+  grid-template-columns: 0 1fr 320px;
+}
+
+/* Ensure timer column is always visible */
+.timer-column {
+  min-width: 0; /* Prevent grid blowout */
 }
 
 /* Left column - History */
@@ -51,6 +66,7 @@ body {
   flex-direction: column;
   overflow: hidden;
   transition: padding 0.3s ease, opacity 0.3s ease;
+  min-height: 100vh;
 }
 
 .history-column.collapsed {
@@ -59,10 +75,10 @@ body {
   pointer-events: none;
 }
 
-/* Sidebar Toggle Button */
+/* Sidebar Toggle Button - Left (History) */
 .sidebar-toggle {
   position: fixed;
-  left: 320px;
+  left: 280px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 100;
@@ -76,7 +92,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: left 0.3s ease, background-color 0.15s ease;
+  transition: left 0.3s ease, right 0.3s ease, background-color 0.15s ease;
   box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
 }
 
@@ -89,10 +105,154 @@ body {
   color: #6b7280;
 }
 
-.pomodoro-layout.sidebar-collapsed .sidebar-toggle {
+/* Left sidebar collapsed - move toggle to edge */
+.pomodoro-layout.sidebar-collapsed .sidebar-toggle:not(.sidebar-toggle-right) {
   left: 0;
   border-left: 1px solid #e5e7eb;
   border-radius: 0 8px 8px 0;
+}
+
+/* ===========================================
+   Right Sidebar (Tasks)
+   =========================================== */
+
+.tasks-column {
+  background-color: #ffffff;
+  border-left: 1px solid #e5e7eb;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: padding 0.3s ease, opacity 0.3s ease;
+  min-height: 100vh;
+}
+
+.tasks-column.collapsed {
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+}
+
+/* Right Sidebar Toggle Button */
+.sidebar-toggle.sidebar-toggle-right {
+  left: auto !important;
+  right: 0;
+  border-left: 1px solid #e5e7eb;
+  border-right: none;
+  border-radius: 8px 0 0 8px;
+  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.05);
+}
+
+.pomodoro-layout.tasks-sidebar-open .sidebar-toggle.sidebar-toggle-right {
+  right: 320px;
+}
+
+/* Tasks Section Content */
+.tasks-section {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.tasks-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.tasks-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.tasks-settings-link {
+  font-size: 1rem;
+  color: #9ca3af;
+  text-decoration: none;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+
+.tasks-settings-link:hover {
+  color: #6b7280;
+}
+
+.tasks-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Tasks Loading State */
+.tasks-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: center;
+  padding: 2rem 1rem;
+  color: #6b7280;
+  font-size: 0.9375rem;
+}
+
+.loading-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Tasks List in Sidebar */
+.tasks-column .tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: none;
+  margin: 0;
+}
+
+.tasks-column .task-item {
+  padding: 0.75rem;
+  background-color: #f9fafb;
+}
+
+.tasks-column .task-title {
+  font-size: 0.9375rem;
+}
+
+.tasks-column .task-notes {
+  font-size: 0.8125rem;
+}
+
+.tasks-empty-list {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #9ca3af;
+  font-size: 0.9375rem;
+}
+
+.tasks-setup-link {
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.tasks-setup-link:hover {
+  text-decoration: underline;
 }
 
 /* Right column - Timer */
@@ -679,10 +839,17 @@ body {
 .top-nav {
   position: fixed;
   top: 1rem;
-  right: 1rem;
+  left: 0;
+  right: 0;
   z-index: 50;
   display: flex;
+  justify-content: center;
   gap: 0.5rem;
+  pointer-events: none; /* Allow clicks to pass through the container */
+}
+
+.top-nav > * {
+  pointer-events: auto; /* Re-enable clicks on buttons */
 }
 
 .nav-button {
@@ -896,10 +1063,12 @@ body {
 @media (max-width: 768px) {
   .pomodoro-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto 1fr auto;
   }
 
-  .pomodoro-layout.sidebar-collapsed {
+  .pomodoro-layout.sidebar-collapsed,
+  .pomodoro-layout.tasks-sidebar-open,
+  .pomodoro-layout.sidebar-collapsed.tasks-sidebar-open {
     grid-template-columns: 1fr;
   }
 
@@ -916,13 +1085,25 @@ body {
 
   .timer-column {
     order: 1;
-    min-height: 70vh;
+    min-height: 60vh;
+  }
+
+  .tasks-column {
+    order: 3;
+    border-left: none;
+    border-top: 1px solid #e5e7eb;
+    padding: 1.5rem;
+    max-height: 40vh;
+  }
+
+  .tasks-column.collapsed {
+    display: none;
   }
 
   .sidebar-toggle {
     position: fixed;
-    left: auto;
-    right: 1rem;
+    left: 1rem;
+    right: auto !important;
     bottom: 1rem;
     top: auto;
     transform: none;
@@ -933,10 +1114,20 @@ body {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 
-  .pomodoro-layout.sidebar-collapsed .sidebar-toggle {
-    left: auto;
+  .pomodoro-layout.sidebar-collapsed .sidebar-toggle:not(.sidebar-toggle-right) {
+    left: 1rem;
     border-left: 1px solid #e5e7eb;
     border-radius: 50%;
+  }
+
+  .sidebar-toggle.sidebar-toggle-right {
+    left: auto !important;
+    right: 1rem !important;
+    bottom: 1rem;
+  }
+
+  .pomodoro-layout.tasks-sidebar-open .sidebar-toggle.sidebar-toggle-right {
+    right: 1rem !important;
   }
 
   .sidebar-toggle-icon {
@@ -963,7 +1154,9 @@ body {
 
   .top-nav {
     top: 0.75rem;
-    right: 0.75rem;
+    left: 0;
+    right: 0;
+    transform: none;
   }
 
   .nav-button {
@@ -987,4 +1180,224 @@ body {
   .modal-body {
     padding: 1rem;
   }
+}
+
+/* ===========================================
+   Google Tasks Page Styles
+   =========================================== */
+
+.tasks-page {
+  min-height: 100vh;
+  background-color: #f5f7f9;
+  padding: 2rem;
+}
+
+.tasks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 640px;
+  margin: 0 auto 2rem;
+}
+
+.tasks-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin: 0;
+}
+
+.back-link {
+  font-size: 0.9375rem;
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.tasks-error {
+  max-width: 640px;
+  margin: 0 auto 1.5rem;
+  padding: 1rem;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #b91c1c;
+}
+
+.tasks-list {
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  transition: box-shadow 0.15s ease;
+}
+
+.task-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.task-checkbox {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 1.25rem;
+}
+
+.task-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-title {
+  font-size: 1rem;
+  color: #1a1a2e;
+  display: block;
+  word-wrap: break-word;
+}
+
+.task-notes {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0.25rem 0 0;
+  line-height: 1.4;
+}
+
+.task-due {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.tasks-empty {
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.tasks-actions {
+  max-width: 640px;
+  margin: 2rem auto 0;
+  display: flex;
+  justify-content: center;
+}
+
+/* Task List Selection */
+.task-lists {
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.task-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.task-list-button {
+  flex: 1;
+  padding: 1rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #374151;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.task-list-button:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.task-list-button.selected {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+  color: #1d4ed8;
+}
+
+.task-list-selected-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #3b82f6;
+  background-color: #dbeafe;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+}
+
+.btn-secondary {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #374151;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.btn-secondary:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+
+/* Navigation button variants */
+.nav-button-secondary {
+  color: #6b7280;
+}
+
+.nav-button-secondary:hover {
+  color: #374151;
+}
+
+.nav-button-google {
+  background-color: #4285f4;
+  color: #ffffff;
+  border-color: #4285f4;
+}
+
+.nav-button-google:hover {
+  background-color: #3367d6;
+  border-color: #3367d6;
+}
+
+/* Fix button_to form styling in nav */
+.top-nav form {
+  display: contents;
+}
+
+.top-nav form .nav-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }

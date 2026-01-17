@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_16_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_17_062239) do
   create_table "pomodoros", force: :cascade do |t|
     t.datetime "completed_at"
     t.date "completed_date"
@@ -29,5 +29,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_16_100000) do
     t.string "name", null: false
     t.datetime "updated_at", null: false
     t.index ["name"], name: "index_tags_on_name", unique: true
+  end
+
+  create_table "users", force: :cascade do |t|
+    t.string "access_token"
+    t.datetime "created_at", null: false
+    t.string "email", null: false
+    t.string "google_tasks_list_id"
+    t.string "google_uid", null: false
+    t.string "refresh_token"
+    t.datetime "token_expires_at"
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["google_uid"], name: "index_users_on_google_uid", unique: true
   end
 end
