@@ -20,7 +20,7 @@ import { Controller } from "@hotwired/stimulus"
  * - Break ending: Pulse animation before returning to ready
  */
 export default class extends Controller {
-  static targets = ["timer", "status", "startButton", "stopButton", "description", "tagInput", "tagDropdown", "addNewOption", "addNewText", "combobox", "count", "container", "activeTitle", "sidebar", "sidebarToggle", "sidebarToggleIcon", "todayProgress", "tagStatsModal", "pieChart", "pieChartContainer", "tagStatsLegend", "tasksSidebar", "tasksSidebarToggle", "tasksSidebarToggleIcon", "tasksContent", "tasksList", "tasksLoading", "tasksError"]
+  static targets = ["timer", "status", "startButton", "stopButton", "description", "tagInput", "tagDropdown", "addNewOption", "addNewText", "combobox", "count", "container", "activeTitle", "sidebar", "sidebarToggle", "sidebarToggleIcon", "todayProgress", "progressBar", "tagStatsModal", "pieChart", "pieChartContainer", "tagStatsLegend", "tasksContent", "tasksList", "tasksLoading", "tasksError", "historySection", "historySectionContent", "historySectionIcon", "tasksSection", "tasksSectionContent", "tasksSectionIcon", "calendarSection", "calendarSectionContent", "calendarSectionIcon", "calendarContent", "calendarList", "calendarLoading", "calendarError", "todayPomodorosSection", "todayPomodorosSectionContent", "todayPomodorosSectionIcon", "todayPomodorosList"]
   static values = { todayCount: Number, todayDate: String, dailyTarget: Number, tagStatistics: Array, userSignedIn: Boolean, hasTaskList: Boolean }
   
   // Colors for pie chart slices - distinct, accessible palette
@@ -55,8 +55,12 @@ export default class extends Controller {
     this.pomodoroStartedAt = null
     this.notificationPermissionRequested = false
     this.sidebarCollapsed = false
-    this.tasksSidebarCollapsed = false // Tasks sidebar starts open
+    this.historySectionCollapsed = false
+    this.tasksSectionCollapsed = false
+    this.calendarSectionCollapsed = false
+    this.todayPomodorosSectionCollapsed = false
     this.tasksLoaded = false
+    this.calendarLoaded = false
 
     this.updateDisplay()
     this.updateVisualState()
@@ -67,15 +71,67 @@ export default class extends Controller {
     this.handleClickOutside = this.handleClickOutside.bind(this)
     document.addEventListener("click", this.handleClickOutside)
     
+    // Debug: keyboard shortcut to force complete (Ctrl+Shift+D)
+    this.handleDebugKeydown = this.handleDebugKeydown.bind(this)
+    document.addEventListener("keydown", this.handleDebugKeydown)
+    
     // Load tasks on connect if user has a task list configured
     if (this.hasTaskListValue && !this.tasksLoaded) {
       this.fetchTasks()
+    }
+    
+    // Load calendar events on connect if user is signed in
+    if (this.userSignedInValue && !this.calendarLoaded) {
+      this.fetchCalendarEvents()
+    }
+  }
+  
+  /**
+   * Handle debug keyboard shortcuts
+   */
+  handleDebugKeydown(event) {
+    const isCtrlOrCmd = event.ctrlKey || event.metaKey
+    
+    // Alt+Enter to force complete current pomodoro
+    if (event.altKey && event.key === "Enter") {
+      event.preventDefault()
+      event.stopPropagation()
+      console.log("[Pomodoro] Debug shortcut triggered (Alt+Enter)")
+      this.debugForceComplete()
+      return
+    }
+    
+    // Ctrl+Shift+D or Cmd+Shift+D - force complete pomodoro
+    if (isCtrlOrCmd && event.shiftKey && (event.key === "D" || event.key === "d")) {
+      event.preventDefault()
+      event.stopPropagation()
+      console.log("[Pomodoro] Debug shortcut triggered (Ctrl+Shift+D)")
+      this.debugForceComplete()
+      return
+    }
+    
+    // Ctrl+Shift+B or Cmd+Shift+B - end break early
+    if (isCtrlOrCmd && event.shiftKey && (event.key === "B" || event.key === "b")) {
+      event.preventDefault()
+      event.stopPropagation()
+      console.log("[Pomodoro] Debug shortcut triggered (Ctrl+Shift+B) - ending break")
+      this.debugEndBreak()
+      return
+    }
+    
+    // Ctrl+Shift+F as backup for pomodoro complete
+    if (isCtrlOrCmd && event.shiftKey && (event.key === "F" || event.key === "f")) {
+      event.preventDefault()
+      event.stopPropagation()
+      console.log("[Pomodoro] Debug shortcut triggered (Ctrl+Shift+F)")
+      this.debugForceComplete()
     }
   }
 
   disconnect() {
     this.stopTimer()
     document.removeEventListener("click", this.handleClickOutside)
+    document.removeEventListener("keydown", this.handleDebugKeydown)
   }
 
   /**
@@ -98,28 +154,314 @@ export default class extends Controller {
   }
 
   /**
-   * Toggle the right sidebar (tasks) visibility
+   * Toggle the history section visibility
    */
-  toggleTasksSidebar() {
-    this.tasksSidebarCollapsed = !this.tasksSidebarCollapsed
+  toggleHistorySection() {
+    this.historySectionCollapsed = !this.historySectionCollapsed
     
-    if (this.hasTasksSidebarTarget) {
-      this.tasksSidebarTarget.classList.toggle("collapsed", this.tasksSidebarCollapsed)
+    if (this.hasHistorySectionContentTarget) {
+      this.historySectionContentTarget.classList.toggle("collapsed", this.historySectionCollapsed)
     }
     
-    if (this.hasContainerTarget) {
-      // Only toggle the "open" class - no need for a "collapsed" class
-      this.containerTarget.classList.toggle("tasks-sidebar-open", !this.tasksSidebarCollapsed)
+    if (this.hasHistorySectionIconTarget) {
+      this.historySectionIconTarget.textContent = this.historySectionCollapsed ? "▶" : "▼"
+    }
+  }
+
+  /**
+   * Toggle the tasks section visibility
+   */
+  toggleTasksSection() {
+    this.tasksSectionCollapsed = !this.tasksSectionCollapsed
+    
+    if (this.hasTasksSectionContentTarget) {
+      this.tasksSectionContentTarget.classList.toggle("collapsed", this.tasksSectionCollapsed)
     }
     
-    if (this.hasTasksSidebarToggleIconTarget) {
-      this.tasksSidebarToggleIconTarget.textContent = this.tasksSidebarCollapsed ? "◀" : "▶"
+    if (this.hasTasksSectionIconTarget) {
+      this.tasksSectionIconTarget.textContent = this.tasksSectionCollapsed ? "▶" : "▼"
+    }
+  }
+
+  /**
+   * Toggle the calendar section visibility
+   */
+  toggleCalendarSection() {
+    this.calendarSectionCollapsed = !this.calendarSectionCollapsed
+    
+    if (this.hasCalendarSectionContentTarget) {
+      this.calendarSectionContentTarget.classList.toggle("collapsed", this.calendarSectionCollapsed)
     }
     
-    // Load tasks when opening the sidebar for the first time
-    if (!this.tasksSidebarCollapsed && !this.tasksLoaded && this.hasTaskListValue) {
-      this.fetchTasks()
+    if (this.hasCalendarSectionIconTarget) {
+      this.calendarSectionIconTarget.textContent = this.calendarSectionCollapsed ? "▶" : "▼"
     }
+  }
+
+  /**
+   * Toggle the today's pomodoros section visibility
+   */
+  toggleTodayPomodorosSection() {
+    this.todayPomodorosSectionCollapsed = !this.todayPomodorosSectionCollapsed
+    
+    if (this.hasTodayPomodorosSectionContentTarget) {
+      this.todayPomodorosSectionContentTarget.classList.toggle("collapsed", this.todayPomodorosSectionCollapsed)
+    }
+    
+    if (this.hasTodayPomodorosSectionIconTarget) {
+      this.todayPomodorosSectionIconTarget.textContent = this.todayPomodorosSectionCollapsed ? "▶" : "▼"
+    }
+  }
+
+  /**
+   * Delete a pomodoro
+   */
+  async deletePomodoro(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    
+    // Store references BEFORE the async call (event.currentTarget changes after await)
+    const button = event.currentTarget
+    const itemEl = button.closest(".today-pomodoro-item")
+    const pomodoroId = button.dataset.pomodoroId
+    
+    console.log("[Pomodoro] Deleting pomodoro:", pomodoroId, "Element:", itemEl)
+    
+    if (!pomodoroId) {
+      console.error("[Pomodoro] No pomodoro ID found")
+      return
+    }
+    
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+    
+    try {
+      const response = await fetch(`/pomodoros/${pomodoroId}`, {
+        method: "DELETE",
+        headers: {
+          "X-CSRF-Token": csrfToken,
+          "Accept": "application/json"
+        }
+      })
+      
+      console.log("[Pomodoro] Delete response status:", response.status)
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log("[Pomodoro] Delete response data:", data)
+        
+        if (data.success) {
+          // Remove the item from the DOM
+          if (itemEl) {
+            console.log("[Pomodoro] Removing element from DOM")
+            itemEl.remove()
+          }
+          
+          // Update the count
+          this.completedToday = data.today_count
+          this.updateCount()
+          
+          // Update tag statistics chart
+          if (data.tag_statistics) {
+            this.tagStatisticsValue = data.tag_statistics
+            this.updateTagStatsDisplay()
+          }
+          
+          // Check if list is now empty
+          if (this.hasTodayPomodorosListTarget) {
+            const remainingItems = this.todayPomodorosListTarget.querySelectorAll(".today-pomodoro-item")
+            if (remainingItems.length === 0) {
+              this.todayPomodorosListTarget.innerHTML = `
+                <div class="today-pomodoros-empty">
+                  <p>No pomodoros completed today</p>
+                </div>
+              `
+            }
+          }
+        } else {
+          console.error("[Pomodoro] Delete failed:", data.error)
+        }
+      } else {
+        const errorText = await response.text()
+        console.error("[Pomodoro] Delete request failed:", response.status, errorText)
+      }
+    } catch (error) {
+      console.error("[Pomodoro] Error deleting pomodoro:", error)
+    }
+  }
+
+  /**
+   * Add a new pomodoro to the today's list
+   */
+  addPomodoroToTodayList(pomodoro) {
+    console.log("[Pomodoro] addPomodoroToTodayList called with:", pomodoro)
+    
+    // Try to find the list element directly if Stimulus target isn't available
+    let listEl = this.hasTodayPomodorosListTarget 
+      ? this.todayPomodorosListTarget 
+      : document.querySelector(".today-pomodoros-list")
+    
+    console.log("[Pomodoro] List element found:", !!listEl)
+    
+    if (!listEl) {
+      console.error("[Pomodoro] Cannot find today-pomodoros-list element!")
+      return
+    }
+    
+    // Ensure the sidebar is expanded
+    const sidebar = document.querySelector(".sidebar-column")
+    if (sidebar && sidebar.classList.contains("collapsed")) {
+      sidebar.classList.remove("collapsed")
+    }
+    
+    // Ensure the Today's Pomodoros section is expanded
+    const sectionContent = document.querySelector('[data-pomodoro-timer-target="todayPomodorosSectionContent"]')
+    const sectionIcon = document.querySelector('[data-pomodoro-timer-target="todayPomodorosSectionIcon"]')
+    if (sectionContent && sectionContent.classList.contains("collapsed")) {
+      sectionContent.classList.remove("collapsed")
+      if (sectionIcon) sectionIcon.textContent = "▼"
+    }
+    
+    // Remove empty message if present
+    const emptyEl = listEl.querySelector(".today-pomodoros-empty")
+    if (emptyEl) {
+      console.log("[Pomodoro] Removing empty message")
+      emptyEl.remove()
+    }
+    
+    // Create new item HTML
+    const itemHtml = `
+      <div class="today-pomodoro-item" data-pomodoro-id="${pomodoro.id}">
+        <div class="pomodoro-item-content">
+          <span class="pomodoro-item-time">${this.escapeHtml(pomodoro.started_at || "")}</span>
+          <span class="pomodoro-item-title">${this.escapeHtml(pomodoro.description || "Untitled")}</span>
+        </div>
+        <button 
+          class="pomodoro-item-delete" 
+          data-action="click->pomodoro-timer#deletePomodoro"
+          data-pomodoro-id="${pomodoro.id}"
+          aria-label="Delete pomodoro"
+        >
+          ×
+        </button>
+      </div>
+    `
+    
+    // Insert at the beginning (most recent first)
+    console.log("[Pomodoro] Inserting pomodoro item into list")
+    listEl.insertAdjacentHTML("afterbegin", itemHtml)
+    console.log("[Pomodoro] Pomodoro item added successfully!")
+    
+    // Flash the new item to make it visible
+    const newItem = listEl.querySelector(".today-pomodoro-item")
+    if (newItem) {
+      newItem.style.transition = "background-color 0.3s"
+      newItem.style.backgroundColor = "rgba(34, 197, 94, 0.3)"
+      setTimeout(() => {
+        newItem.style.backgroundColor = ""
+      }, 1000)
+    }
+  }
+
+  /**
+   * Fetch calendar events from Google Calendar API
+   */
+  async fetchCalendarEvents() {
+    if (!this.hasCalendarListTarget) return
+    
+    // Show loading state
+    if (this.hasCalendarLoadingTarget) {
+      this.calendarLoadingTarget.classList.remove("hidden")
+    }
+    if (this.hasCalendarErrorTarget) {
+      this.calendarErrorTarget.classList.add("hidden")
+    }
+    this.calendarListTarget.classList.add("hidden")
+
+    try {
+      const response = await fetch("/calendar_events.json", {
+        headers: {
+          "Accept": "application/json"
+        }
+      })
+
+      const data = await response.json()
+
+      // Hide loading
+      if (this.hasCalendarLoadingTarget) {
+        this.calendarLoadingTarget.classList.add("hidden")
+      }
+
+      if (response.ok && data.success) {
+        this.calendarLoaded = true
+        this.renderCalendarEvents(data.events)
+      } else {
+        this.showCalendarError(data.error || "Failed to load events")
+        
+        if (data.reauth) {
+          window.location.reload()
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching calendar events:", error)
+      if (this.hasCalendarLoadingTarget) {
+        this.calendarLoadingTarget.classList.add("hidden")
+      }
+      this.showCalendarError("Failed to connect to Google Calendar")
+    }
+  }
+
+  /**
+   * Render calendar events in the sidebar
+   */
+  renderCalendarEvents(events) {
+    if (!this.hasCalendarListTarget) return
+
+    if (events.length === 0) {
+      this.calendarListTarget.innerHTML = `
+        <div class="calendar-empty-list">
+          <p>No events today</p>
+        </div>
+      `
+    } else {
+      const eventsHtml = events.map(event => {
+        const timeDisplay = event.all_day 
+          ? '<span class="event-time">All day</span>'
+          : `<span class="event-time">${this.formatEventTime(event.start_time)} - ${this.formatEventTime(event.end_time)}</span>`
+        
+        return `
+          <div class="calendar-event-item">
+            <div class="event-time-indicator"></div>
+            <div class="event-content">
+              <span class="event-title">${this.escapeHtml(event.title)}</span>
+              ${timeDisplay}
+            </div>
+          </div>
+        `
+      }).join("")
+      
+      this.calendarListTarget.innerHTML = eventsHtml
+    }
+    
+    this.calendarListTarget.classList.remove("hidden")
+  }
+
+  /**
+   * Format event time for display (HH:MM format)
+   */
+  formatEventTime(timeString) {
+    if (!timeString) return ""
+    const date = new Date(timeString)
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  }
+
+  /**
+   * Show an error message in the calendar sidebar
+   */
+  showCalendarError(message) {
+    if (!this.hasCalendarErrorTarget) return
+    
+    this.calendarErrorTarget.innerHTML = `<p>${this.escapeHtml(message)}</p>`
+    this.calendarErrorTarget.classList.remove("hidden")
   }
 
   /**
@@ -431,6 +773,7 @@ export default class extends Controller {
     this.updateDisplay()
 
     if (this.secondsRemaining <= 0) {
+      console.log("[Pomodoro] Timer reached zero, state:", this.state)
       this.stopTimer()
 
       if (this.state === "pomodoro_running") {
@@ -442,50 +785,121 @@ export default class extends Controller {
   }
 
   /**
+   * Debug: Force complete the current pomodoro (for testing)
+   * Called via keyboard shortcut Ctrl+Shift+D
+   */
+  async debugForceComplete() {
+    console.log("[Pomodoro] Debug: debugForceComplete called, state:", this.state)
+    if (this.state === "pomodoro_running") {
+      console.log("[Pomodoro] Debug: Stopping timer...")
+      this.stopTimer()
+      console.log("[Pomodoro] Debug: Timer stopped, intervalId:", this.intervalId)
+      
+      try {
+        console.log("[Pomodoro] Debug: Calling completePomodoro...")
+        await this.completePomodoro()
+        console.log("[Pomodoro] Debug: completePomodoro finished, new state:", this.state)
+      } catch (error) {
+        console.error("[Pomodoro] Debug: Error in completePomodoro:", error)
+      }
+    } else {
+      console.log("[Pomodoro] Debug: Not in pomodoro_running state, current state:", this.state)
+    }
+  }
+
+  /**
+   * Debug: End the current break early
+   * Called via keyboard shortcut Ctrl+Shift+B
+   */
+  debugEndBreak() {
+    console.log("[Pomodoro] Debug: debugEndBreak called, state:", this.state)
+    if (this.state === "break_running") {
+      console.log("[Pomodoro] Debug: Ending break early...")
+      this.stopTimer()
+      this.completeBreak()
+      console.log("[Pomodoro] Debug: Break ended, new state:", this.state)
+    } else {
+      console.log("[Pomodoro] Debug: Not in break_running state, current state:", this.state)
+    }
+  }
+
+  /**
    * Handle Pomodoro completion
    * - Persists to server
    * - Determines break type
    * - Starts appropriate break
    */
   async completePomodoro() {
-    const completedAt = new Date()
+    try {
+      const completedAt = new Date()
+      console.log("[Pomodoro] Timer completed, saving pomodoro...")
 
-    // Check for date change before saving
-    this.checkDateChange()
+      // Check for date change before saving
+      this.checkDateChange()
 
-    // Persist to server
-    const response = await this.savePomodoro(completedAt)
+      // Persist to server
+      const response = await this.savePomodoro(completedAt)
+      console.log("[Pomodoro] Save response:", response)
 
-    // Update count from server response if available, otherwise increment locally
-    if (response && response.today_count !== undefined) {
-      this.completedToday = response.today_count
-      this.currentDate = response.today_date || this.currentDate
-      
-      // Update tags dropdown with any new tags from the database
-      if (response.available_tags) {
-        this.updateTagsDropdown(response.available_tags)
+      // Update count from server response if available, otherwise increment locally
+      if (response && response.today_count !== undefined) {
+        this.completedToday = response.today_count
+        this.currentDate = response.today_date || this.currentDate
+        console.log("[Pomodoro] Updated count to:", this.completedToday)
+        
+        // Update tags dropdown with any new tags from the database
+        if (response.available_tags) {
+          this.updateTagsDropdown(response.available_tags)
+        }
+        
+        // Update tag statistics chart
+        if (response.tag_statistics) {
+          this.tagStatisticsValue = response.tag_statistics
+          this.updateTagStatsDisplay()
+        }
+        
+        // Add the new pomodoro to the today's list
+        if (response.pomodoro) {
+          console.log("[Pomodoro] Adding to today's list:", response.pomodoro)
+          this.addPomodoroToTodayList(response.pomodoro)
+        } else {
+          console.log("[Pomodoro] WARNING: No pomodoro in response!", response)
+        }
+      } else {
+        this.completedToday++
+        console.log("[Pomodoro] No server response, incrementing locally to:", this.completedToday)
       }
-    } else {
-      this.completedToday++
+      
+      this.updateCount()
+      console.log("[Pomodoro] Count updated")
+
+      // Determine break type and duration
+      const { isLongBreak, duration, durationMinutes } = this.determineBreak()
+      console.log("[Pomodoro] Break determined:", { isLongBreak, duration, durationMinutes })
+
+      // Show notification
+      this.showNotification(
+        "Pomodoro complete",
+        isLongBreak
+          ? `${durationMinutes} minute long break.`
+          : `${durationMinutes} minute break.`
+      )
+
+      // Start break automatically
+      console.log("[Pomodoro] Starting break...")
+      this.state = "break_running"
+      this.secondsRemaining = duration
+      this.updateUI()
+      this.startTimer()
+      console.log("[Pomodoro] Break started, state:", this.state)
+    } catch (error) {
+      console.error("[Pomodoro] Error in completePomodoro:", error)
+      // Still try to start break even if there was an error
+      this.state = "break_running"
+      this.secondsRemaining = 5 * 60 // Default to 5 min break
+      this.updateUI()
+      this.startTimer()
     }
-    this.updateCount()
-
-    // Determine break type and duration
-    const { isLongBreak, duration, durationMinutes } = this.determineBreak()
-
-    // Show notification
-    this.showNotification(
-      "Pomodoro complete",
-      isLongBreak
-        ? `${durationMinutes} minute long break.`
-        : `${durationMinutes} minute break.`
-    )
-
-    // Start break automatically
-    this.state = "break_running"
-    this.secondsRemaining = duration
-    this.updateUI()
-    this.startTimer()
   }
 
   /**
@@ -569,6 +983,18 @@ export default class extends Controller {
    */
   async savePomodoro(completedAt) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+    
+    const pomodoroData = {
+      pomodoro: {
+        started_at: this.pomodoroStartedAt?.toISOString(),
+        completed_at: completedAt.toISOString(),
+        description: this.descriptionTarget.value || null,
+        tags: this.getSelectedTag(),
+        duration_minutes: 25
+      }
+    }
+    
+    console.log("[Pomodoro] Saving with data:", pomodoroData)
 
     try {
       const response = await fetch("/pomodoros", {
@@ -578,25 +1004,20 @@ export default class extends Controller {
           "X-CSRF-Token": csrfToken,
           "Accept": "application/json"
         },
-        body: JSON.stringify({
-          pomodoro: {
-            started_at: this.pomodoroStartedAt.toISOString(),
-            completed_at: completedAt.toISOString(),
-            description: this.descriptionTarget.value || null,
-            tags: this.getSelectedTag(),
-            duration_minutes: 25
-          }
-        })
+        body: JSON.stringify(pomodoroData)
       })
 
       if (response.ok) {
-        return await response.json()
+        const data = await response.json()
+        console.log("[Pomodoro] Save successful:", data)
+        return data
       } else {
-        console.error("Failed to save pomodoro:", await response.text())
+        const errorText = await response.text()
+        console.error("[Pomodoro] Failed to save:", response.status, errorText)
         return null
       }
     } catch (error) {
-      console.error("Error saving pomodoro:", error)
+      console.error("[Pomodoro] Error saving:", error)
       return null
     }
   }
@@ -625,18 +1046,31 @@ export default class extends Controller {
    * Update count display
    */
   updateCount() {
-    this.countTarget.textContent = this.completedToday
+    console.log("[Pomodoro] updateCount called, completedToday:", this.completedToday)
+    if (this.hasCountTarget) {
+      this.countTarget.textContent = this.completedToday
+      console.log("[Pomodoro] Count display updated")
+    } else {
+      console.log("[Pomodoro] No countTarget found")
+    }
     this.updateTodayProgress()
   }
 
   /**
-   * Update today's progress bar fill
+   * Update today's progress bar segments
    */
   updateTodayProgress() {
-    if (!this.hasTodayProgressTarget) return
+    console.log("[Pomodoro] updateTodayProgress called, hasProgressBarTarget:", this.hasProgressBarTarget)
+    if (!this.hasProgressBarTarget) return
     
-    const progress = Math.min((this.completedToday / this.dailyTarget) * 100, 100)
-    this.todayProgressTarget.style.setProperty("--progress", `${progress}%`)
+    const segments = this.progressBarTarget.querySelectorAll(".today-count-segment")
+    segments.forEach((segment, index) => {
+      if (index < this.completedToday) {
+        segment.classList.add("filled")
+      } else {
+        segment.classList.remove("filled")
+      }
+    })
   }
 
   /**
@@ -987,6 +1421,59 @@ export default class extends Controller {
   // ===========================================
 
   /**
+   * Update the tag statistics display (chart and legend)
+   * Called when pomodoros are added or deleted
+   */
+  updateTagStatsDisplay() {
+    const stats = this.tagStatisticsValue || []
+    
+    // Find the modal body
+    const modalBody = this.hasTagStatsModalTarget 
+      ? this.tagStatsModalTarget.querySelector(".modal-body")
+      : null
+    
+    if (!modalBody) return
+    
+    if (stats.length === 0) {
+      // Show empty state
+      modalBody.innerHTML = `
+        <div class="empty-chart-state">
+          <div class="empty-chart-placeholder">
+            <svg viewBox="0 0 100 100" class="empty-chart-icon">
+              <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" stroke-width="8"/>
+              <path d="M50 10 A40 40 0 0 1 90 50" fill="none" stroke="#d1d5db" stroke-width="8" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <p class="empty-chart-message">Complete your first pomodoro with a tag to start tracking time</p>
+        </div>
+      `
+    } else {
+      // Build chart and legend HTML
+      const total = stats.reduce((sum, s) => sum + s.count, 0)
+      const legendHtml = stats.map((stat, index) => `
+        <div class="legend-item">
+          <span class="legend-color" data-color-index="${index}"></span>
+          <span class="legend-label">${this.escapeHtml(stat.tag)}</span>
+          <span class="legend-value">${stat.count} (${((stat.count / total) * 100).toFixed(1)}%)</span>
+        </div>
+      `).join("")
+      
+      modalBody.innerHTML = `
+        <div class="pie-chart-container" data-pomodoro-timer-target="pieChartContainer">
+          <canvas data-pomodoro-timer-target="pieChart" width="300" height="300"></canvas>
+        </div>
+        <div class="tag-stats-legend" data-pomodoro-timer-target="tagStatsLegend">
+          ${legendHtml}
+        </div>
+      `
+      
+      // Re-render the chart and apply colors
+      this.renderPieChart()
+      this.applyLegendColors()
+    }
+  }
+
+  /**
    * Open the tag statistics modal and render the pie chart
    */
   openTagStats() {
@@ -1024,9 +1511,14 @@ export default class extends Controller {
    * Apply colors to legend items based on their index
    */
   applyLegendColors() {
-    if (!this.hasTagStatsLegendTarget) return
+    // Query legend directly since it may be dynamically added
+    const legend = this.hasTagStatsModalTarget 
+      ? this.tagStatsModalTarget.querySelector(".tag-stats-legend")
+      : null
     
-    const colorDots = this.tagStatsLegendTarget.querySelectorAll(".legend-color")
+    if (!legend) return
+    
+    const colorDots = legend.querySelectorAll(".legend-color")
     colorDots.forEach((dot, index) => {
       const colorIndex = index % this.constructor.PIE_COLORS.length
       dot.style.backgroundColor = this.constructor.PIE_COLORS[colorIndex]
@@ -1037,15 +1529,28 @@ export default class extends Controller {
    * Render the pie chart on the canvas
    */
   renderPieChart() {
-    if (!this.hasPieChartTarget) return
+    // Query canvas directly since it may be dynamically added
+    const canvas = this.hasTagStatsModalTarget 
+      ? this.tagStatsModalTarget.querySelector("canvas")
+      : null
+    
+    if (!canvas) {
+      console.log("[Pomodoro] No canvas found for pie chart")
+      return
+    }
+    
+    // Don't render if modal is hidden (canvas will have 0 dimensions)
+    const rect = canvas.getBoundingClientRect()
+    if (rect.width === 0 || rect.height === 0) {
+      console.log("[Pomodoro] Skipping pie chart render - modal is hidden")
+      return
+    }
     
     const stats = this.tagStatisticsValue || []
-    const canvas = this.pieChartTarget
     const ctx = canvas.getContext("2d")
     
     // Get device pixel ratio for crisp rendering
     const dpr = window.devicePixelRatio || 1
-    const rect = canvas.getBoundingClientRect()
     
     // Set canvas size accounting for device pixel ratio
     canvas.width = rect.width * dpr
@@ -1064,7 +1569,7 @@ export default class extends Controller {
     const total = stats.reduce((sum, s) => sum + s.count, 0)
     const centerX = rect.width / 2
     const centerY = rect.height / 2
-    const radius = Math.min(centerX, centerY) - 20
+    const radius = Math.max(0, Math.min(centerX, centerY) - 20) // Ensure radius is never negative
     
     let currentAngle = -Math.PI / 2 // Start from top
     

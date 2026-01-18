@@ -25,9 +25,12 @@ Rails.application.routes.draw do
     end
   end
 
+  # Google Calendar
+  resources :calendar_events, only: [:index]
+
   # Pomodoro timer app
   root "pomodoros#index"
-  resources :pomodoros, only: [:create] do
+  resources :pomodoros, only: [:create, :destroy] do
     collection do
       get :tag_statistics
     end

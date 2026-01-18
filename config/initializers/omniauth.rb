@@ -5,7 +5,7 @@ Rails.application.config.middleware.use OmniAuth::Builder do
            Rails.application.credentials.dig(:google, :client_id),
            Rails.application.credentials.dig(:google, :client_secret),
            {
-             scope: "email,https://www.googleapis.com/auth/tasks",
+             scope: "email,https://www.googleapis.com/auth/tasks,https://www.googleapis.com/auth/calendar.readonly",
              access_type: "offline",      # Required to get refresh_token
              prompt: "consent",           # Force consent screen to always get refresh_token
              name: "google_oauth2"
