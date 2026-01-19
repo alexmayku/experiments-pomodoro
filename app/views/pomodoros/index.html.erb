@@ -1,6 +1,6 @@
 <% daily_target = 11 %>
 
-<div class="pomodoro-layout"
+<div class="app"
      data-controller="pomodoro-timer"
      data-pomodoro-timer-today-count-value="<%= @today_count %>"
      data-pomodoro-timer-today-date-value="<%= @today_date %>"
@@ -10,299 +10,337 @@
      data-pomodoro-timer-has-task-list-value="<%= user_signed_in? && current_user.google_tasks_list_id.present? %>"
      data-pomodoro-timer-target="container">
 
-  <!-- Sidebar Toggle Button -->
-  <button 
-    class="sidebar-toggle"
-    data-pomodoro-timer-target="sidebarToggle"
-    data-action="click->pomodoro-timer#toggleSidebar"
-    aria-label="Toggle sidebar"
-  >
-    <span class="sidebar-toggle-icon" data-pomodoro-timer-target="sidebarToggleIcon">◀</span>
-  </button>
-
-  <!-- Left Column: Combined Sidebar -->
-  <aside class="sidebar-column" data-pomodoro-timer-target="sidebar">
-    
-    <!-- History Section (Collapsible) -->
-    <div class="sidebar-section" data-pomodoro-timer-target="historySection">
-      <button 
-        class="section-header"
-        data-action="click->pomodoro-timer#toggleHistorySection"
-        aria-expanded="true"
-      >
-        <span class="section-title">Past 5 Days</span>
-        <span class="section-toggle-icon" data-pomodoro-timer-target="historySectionIcon">▼</span>
-      </button>
-      <div class="section-content" data-pomodoro-timer-target="historySectionContent">
-        <div class="history-list">
-          <% @daily_history.each do |day| %>
-            <% progress_percent = [(day[:count].to_f / daily_target * 100), 100].min %>
-            <div class="history-item <%= day[:count] == 0 ? 'history-item-empty' : '' %>"
-                 style="--progress: <%= progress_percent %>%;">
-              <span class="history-date"><%= format_history_date(day[:date]) %></span>
-              <div class="progress-pill">
-                <div class="progress-pill-fill"></div>
-                <span class="progress-pill-text"><%= day[:count] %>/<%= daily_target %></span>
-              </div>
-            </div>
+  <!-- Sidebar -->
+  <aside class="sidebar" data-pomodoro-timer-target="sidebar">
+    <div class="sidebar-inner">
+      <!-- Today's Progress -->
+      <section class="sidebar-section">
+        <header class="sidebar-section-header">
+          <h3>Today</h3>
+          <span class="progress-badge"><span data-pomodoro-timer-target="count"><%= @today_count %></span>/<%= daily_target %></span>
+        </header>
+        <div class="progress-dots" data-pomodoro-timer-target="progressBar">
+          <% daily_target.times do |i| %>
+            <div class="progress-dot <%= i < @today_count ? 'filled' : '' %>"></div>
           <% end %>
         </div>
-      </div>
-    </div>
+      </section>
 
-    <!-- Today's Pomodoros Section (Collapsible) -->
-    <div class="sidebar-section" data-pomodoro-timer-target="todayPomodorosSection">
-      <button 
-        class="section-header"
-        data-action="click->pomodoro-timer#toggleTodayPomodorosSection"
-        aria-expanded="true"
-      >
-        <span class="section-title">Today's Pomodoros</span>
-        <span class="section-toggle-icon" data-pomodoro-timer-target="todayPomodorosSectionIcon">▼</span>
-      </button>
-      <div class="section-content section-content-scrollable" data-pomodoro-timer-target="todayPomodorosSectionContent">
-        <div class="today-pomodoros-list" data-pomodoro-timer-target="todayPomodorosList">
-          <% if @today_pomodoros.empty? %>
-            <div class="today-pomodoros-empty">
-              <p>No pomodoros completed today</p>
-            </div>
-          <% else %>
-            <% @today_pomodoros.each do |pomodoro| %>
-              <div class="today-pomodoro-item" data-pomodoro-id="<%= pomodoro.id %>">
-                <div class="pomodoro-item-content">
-                  <span class="pomodoro-item-time"><%= pomodoro.started_at&.strftime("%H:%M") %></span>
-                  <span class="pomodoro-item-title"><%= pomodoro.description.presence || "Untitled" %></span>
+      <!-- Today's Pomodoros -->
+      <section class="sidebar-section collapsible" data-pomodoro-timer-target="todayPomodorosSection">
+        <button class="sidebar-section-header" data-action="click->pomodoro-timer#toggleTodayPomodorosSection">
+          <h3>Completed</h3>
+          <span class="collapse-icon" data-pomodoro-timer-target="todayPomodorosSectionIcon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </span>
+        </button>
+        <div class="sidebar-section-content" data-pomodoro-timer-target="todayPomodorosSectionContent">
+          <div class="pomodoro-list" data-pomodoro-timer-target="todayPomodorosList">
+            <% if @today_pomodoros.empty? %>
+              <div class="empty-message">No pomodoros yet today</div>
+            <% else %>
+              <% @today_pomodoros.each do |pomodoro| %>
+                <div class="pomodoro-item" data-pomodoro-id="<%= pomodoro.id %>">
+                  <span class="pomodoro-time"><%= pomodoro.started_at&.strftime("%H:%M") %></span>
+                  <span class="pomodoro-title"><%= pomodoro.description.presence || "Untitled" %></span>
+                  <button class="pomodoro-delete" data-action="click->pomodoro-timer#deletePomodoro" data-pomodoro-id="<%= pomodoro.id %>">×</button>
                 </div>
-                <button 
-                  class="pomodoro-item-delete" 
-                  data-action="click->pomodoro-timer#deletePomodoro"
-                  data-pomodoro-id="<%= pomodoro.id %>"
-                  aria-label="Delete pomodoro"
-                >
-                  ×
-                </button>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      </section>
+
+      <!-- Calendar -->
+      <section class="sidebar-section collapsible" data-pomodoro-timer-target="calendarSection">
+        <button class="sidebar-section-header" data-action="click->pomodoro-timer#toggleCalendarSection">
+          <h3>Calendar</h3>
+          <span class="collapse-icon" data-pomodoro-timer-target="calendarSectionIcon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </span>
+        </button>
+        <div class="sidebar-section-content" data-pomodoro-timer-target="calendarSectionContent">
+          <div class="calendar-list" data-pomodoro-timer-target="calendarContent">
+            <% if user_signed_in? %>
+              <div class="loading-state" data-pomodoro-timer-target="calendarLoading">
+                <div class="spinner"></div>
+              </div>
+            <% else %>
+              <div class="empty-message">Connect Google to view</div>
+            <% end %>
+            <div class="hidden" data-pomodoro-timer-target="calendarList"></div>
+            <div class="hidden" data-pomodoro-timer-target="calendarError"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tasks -->
+      <section class="sidebar-section collapsible" data-pomodoro-timer-target="tasksSection">
+        <button class="sidebar-section-header" data-action="click->pomodoro-timer#toggleTasksSection">
+          <h3>Tasks</h3>
+          <span class="collapse-icon" data-pomodoro-timer-target="tasksSectionIcon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </span>
+        </button>
+        <div class="sidebar-section-content" data-pomodoro-timer-target="tasksSectionContent">
+          <div class="tasks-list-container" data-pomodoro-timer-target="tasksContent">
+            <% if user_signed_in? && current_user.google_tasks_list_id.present? %>
+              <div class="loading-state" data-pomodoro-timer-target="tasksLoading">
+                <div class="spinner"></div>
+              </div>
+            <% elsif user_signed_in? %>
+              <div class="empty-message">
+                <%= link_to "Select a task list", lists_tasks_path, class: "link" %>
+              </div>
+            <% else %>
+              <div class="empty-message">
+                <%= button_to "/auth/google_oauth2", method: :post, data: { turbo: false }, class: "connect-btn" do %>
+                  Connect Google
+                <% end %>
               </div>
             <% end %>
-          <% end %>
+            <div class="hidden" data-pomodoro-timer-target="tasksList"></div>
+            <div class="hidden" data-pomodoro-timer-target="tasksError"></div>
+          </div>
         </div>
-      </div>
+        <% if user_signed_in? %>
+          <div class="sidebar-section-footer">
+            <%= link_to "Settings", lists_tasks_path, class: "footer-link" %>
+            <%= button_to logout_path, method: :delete, class: "footer-link danger" do %>Sign out<% end %>
+          </div>
+        <% end %>
+      </section>
+
+      <!-- History -->
+      <section class="sidebar-section collapsible" data-pomodoro-timer-target="historySection">
+        <button class="sidebar-section-header" data-action="click->pomodoro-timer#toggleHistorySection">
+          <h3>Past Days</h3>
+          <span class="collapse-icon" data-pomodoro-timer-target="historySectionIcon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </span>
+        </button>
+        <div class="sidebar-section-content" data-pomodoro-timer-target="historySectionContent">
+          <div class="history-list">
+            <% @daily_history.each do |day| %>
+              <% progress = (day[:count].to_f / daily_target * 100).clamp(0, 100) %>
+              <div class="history-item">
+                <span class="history-date"><%= format_history_date(day[:date]) %></span>
+                <div class="history-bar">
+                  <div class="history-fill" style="width: <%= progress %>%"></div>
+                </div>
+                <span class="history-count"><%= day[:count] %></span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </section>
     </div>
 
-    <!-- Calendar Events Section (Collapsible) -->
-    <div class="sidebar-section" data-pomodoro-timer-target="calendarSection">
-      <button 
-        class="section-header"
-        data-action="click->pomodoro-timer#toggleCalendarSection"
-        aria-expanded="true"
-      >
-        <span class="section-title">Today's Calendar</span>
-        <span class="section-toggle-icon" data-pomodoro-timer-target="calendarSectionIcon">▼</span>
-      </button>
-      <div class="section-content section-content-scrollable" data-pomodoro-timer-target="calendarSectionContent">
-        <div class="calendar-content" data-pomodoro-timer-target="calendarContent">
-          <% if user_signed_in? %>
-            <div class="calendar-loading" data-pomodoro-timer-target="calendarLoading">
-              <span class="loading-spinner"></span>
-              <span>Loading events...</span>
-            </div>
-          <% else %>
-            <div class="calendar-empty">
-              <p>Connect Google to see today's events</p>
-            </div>
-          <% end %>
-          
-          <div class="calendar-list hidden" data-pomodoro-timer-target="calendarList"></div>
-          <div class="calendar-error hidden" data-pomodoro-timer-target="calendarError"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tasks Section (Collapsible) -->
-    <div class="sidebar-section" data-pomodoro-timer-target="tasksSection">
-      <button 
-        class="section-header"
-        data-action="click->pomodoro-timer#toggleTasksSection"
-        aria-expanded="true"
-      >
-        <span class="section-title">Google Tasks</span>
-        <span class="section-toggle-icon" data-pomodoro-timer-target="tasksSectionIcon">▼</span>
-      </button>
-      <div class="section-content section-content-scrollable" data-pomodoro-timer-target="tasksSectionContent">
-        <div class="tasks-content" data-pomodoro-timer-target="tasksContent">
-          <% if user_signed_in? && current_user.google_tasks_list_id.present? %>
-            <div class="tasks-loading" data-pomodoro-timer-target="tasksLoading">
-              <span class="loading-spinner"></span>
-              <span>Loading tasks...</span>
-            </div>
-          <% elsif user_signed_in? %>
-            <div class="tasks-empty">
-              <p>No task list selected.</p>
-              <%= link_to "Select a list", lists_tasks_path, class: "tasks-setup-link" %>
-            </div>
-          <% else %>
-            <div class="tasks-empty">
-              <%= button_to "/auth/google_oauth2", method: :post, data: { turbo: false }, class: "tasks-connect-btn" do %>
-                <span>G</span> Connect Google
-              <% end %>
-            </div>
-          <% end %>
-          
-          <div class="tasks-list hidden" data-pomodoro-timer-target="tasksList"></div>
-          <div class="tasks-error hidden" data-pomodoro-timer-target="tasksError"></div>
-        </div>
-      </div>
-      
-      <% if user_signed_in? %>
-        <div class="section-footer">
-          <%= link_to lists_tasks_path, class: "section-footer-link" do %>
-            ⚙ Change List
-          <% end %>
-          <%= button_to logout_path, method: :delete, class: "section-footer-link section-signout-link" do %>
-            ↪ Sign Out
-          <% end %>
-        </div>
-      <% end %>
-    </div>
   </aside>
 
-  <!-- Main Column: Timer Section -->
-  <main class="timer-column">
-    <!-- Navigation Bar -->
-    <nav class="top-nav">
-      <button 
-        class="nav-button"
-        data-action="click->pomodoro-timer#openTagStats"
-        aria-label="View time by tag"
-      >
-        <span class="nav-button-icon">🕒</span>
-        <span class="nav-button-text">Time</span>
-      </button>
-    </nav>
+  <!-- Sidebar Toggle Button (outside sidebar for visibility when collapsed) -->
+  <button class="sidebar-toggle" data-pomodoro-timer-target="sidebarToggle" data-action="click->pomodoro-timer#toggleSidebar" aria-label="Toggle sidebar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" data-pomodoro-timer-target="sidebarToggleIcon">
+      <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+  </button>
 
-    <!-- Active Pomodoro Title (shown when running) -->
-    <div class="active-title hidden" data-pomodoro-timer-target="activeTitle"></div>
+  <!-- Main Content -->
+  <main class="main">
+    <!-- Active Task Title -->
+    <div class="active-task hidden" data-pomodoro-timer-target="activeTitle"></div>
 
-    <!-- Timer Display -->
-    <div class="timer-display" data-pomodoro-timer-target="timer">25:00</div>
-
-    <!-- Status Text -->
-    <div class="status-text" data-pomodoro-timer-target="status">Ready to start</div>
-
-    <!-- Today's Count Card -->
-    <div class="today-count-wrapper">
-      <div class="today-count" data-pomodoro-timer-target="todayProgress">
-        <span class="today-count-number">
-          <span data-pomodoro-timer-target="count"><%= @today_count %></span> / <%= daily_target %>
-        </span>
-        <span class="today-count-label">today</span>
-        <div class="today-count-progress" data-pomodoro-timer-target="progressBar">
-          <% daily_target.times do |i| %>
-            <div class="today-count-segment <%= i < @today_count ? 'filled' : '' %>"></div>
-          <% end %>
-        </div>
+    <!-- Timer Ring -->
+    <div class="timer-container">
+      <svg class="timer-ring" viewBox="0 0 200 200">
+        <circle class="timer-ring-bg" cx="100" cy="100" r="90" />
+        <circle class="timer-ring-progress" cx="100" cy="100" r="90" data-pomodoro-timer-target="timerRing" />
+      </svg>
+      <div class="timer-content">
+        <div class="timer-time" data-pomodoro-timer-target="timer">25:00</div>
+        <div class="timer-status" data-pomodoro-timer-target="status">Ready</div>
       </div>
     </div>
 
-    <!-- Form Card -->
-    <div class="form-card">
-      <!-- Description -->
-      <div class="form-group">
-        <label for="description">Description</label>
-        <input
-          type="text"
-          id="description"
-          placeholder="What are you working on?"
+    <!-- Form -->
+    <div class="form">
+      <div class="form-row">
+        <input 
+          type="text" 
+          class="input" 
+          placeholder="What are you working on?" 
           data-pomodoro-timer-target="description"
-        >
+        />
       </div>
-
-      <!-- Tags Combobox -->
-      <div class="form-group">
-        <label for="tag-input">Tag</label>
+      <div class="form-row">
         <div class="combobox" data-pomodoro-timer-target="combobox">
           <input
             type="text"
-            id="tag-input"
-            placeholder="Search or add a tag..."
+            class="input"
+            placeholder="Add a tag..."
             data-pomodoro-timer-target="tagInput"
             data-action="focus->pomodoro-timer#openTagDropdown input->pomodoro-timer#filterTags keydown->pomodoro-timer#handleTagKeydown"
             autocomplete="off"
-          >
+          />
           <div class="combobox-dropdown hidden" data-pomodoro-timer-target="tagDropdown">
             <% @available_tags.each do |tag| %>
-              <div class="combobox-option" 
-                   data-tag="<%= tag %>"
-                   data-action="click->pomodoro-timer#selectTag">
-                <%= tag %>
-              </div>
+              <button class="combobox-option" data-tag="<%= tag %>" data-action="click->pomodoro-timer#selectTag"><%= tag %></button>
             <% end %>
-            <div class="combobox-add-new hidden" 
-                 data-pomodoro-timer-target="addNewOption"
-                 data-action="click->pomodoro-timer#addNewTag">
-              <span class="combobox-add-icon">+</span>
-              <span>Add "<span data-pomodoro-timer-target="addNewText"></span>"</span>
-            </div>
+            <button class="combobox-option add-new hidden" data-pomodoro-timer-target="addNewOption" data-action="click->pomodoro-timer#addNewTag">
+              + Add "<span data-pomodoro-timer-target="addNewText"></span>"
+            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Button Group -->
-    <div class="button-group" data-pomodoro-timer-target="buttonGroup">
-      <!-- Start Button -->
-      <button
-        class="start-button"
-        data-pomodoro-timer-target="startButton"
-        data-action="click->pomodoro-timer#start"
-      >
-        Start 
+    <!-- Actions -->
+    <div class="actions" data-pomodoro-timer-target="buttonGroup">
+      <button class="btn btn-primary" data-pomodoro-timer-target="startButton" data-action="click->pomodoro-timer#start">
+        Start Focus
       </button>
-
-      <!-- Stop Button (hidden by default, shown during pomodoro) -->
-      <button
-        class="stop-button hidden"
-        data-pomodoro-timer-target="stopButton"
-        data-action="click->pomodoro-timer#stop"
-      >
+      <button class="btn btn-danger hidden" data-pomodoro-timer-target="stopButton" data-action="click->pomodoro-timer#stop">
         Stop
+      </button>
+    </div>
+
+    <!-- Break Controls (visible only during break) -->
+    <div class="break-controls hidden" data-pomodoro-timer-target="breakControls">
+      <button class="btn btn-primary" data-action="click->pomodoro-timer#endBreakEarly" data-pomodoro-timer-target="endBreakButton">
+        End Break
+      </button>
+      <div class="break-toggles" data-pomodoro-timer-target="breakToggles">
+        <button class="break-toggle active" data-duration="5" data-action="click->pomodoro-timer#setBreakDuration" data-pomodoro-timer-target="breakToggle5">
+          5m
+        </button>
+        <button class="break-toggle" data-duration="30" data-action="click->pomodoro-timer#setBreakDuration" data-pomodoro-timer-target="breakToggle30">
+          30m
+        </button>
+        <button class="break-toggle" data-duration="60" data-action="click->pomodoro-timer#setBreakDuration" data-pomodoro-timer-target="breakToggle60">
+          60m
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+      <button class="quick-btn" data-action="click->pomodoro-timer#openTagStats">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+          <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+        </svg>
+        Stats
+      </button>
+      <button class="quick-btn" data-action="click->pomodoro-timer#openTagManager">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+          <line x1="7" y1="7" x2="7.01" y2="7"></line>
+        </svg>
+        Tags
       </button>
     </div>
   </main>
 
-  <!-- Time by Tag Modal -->
-  <div class="modal-overlay hidden" data-pomodoro-timer-target="tagStatsModal" data-action="click->pomodoro-timer#handleModalClick">
-    <div class="modal-content" data-modal-content>
-      <div class="modal-header">
-        <h2 class="modal-title">Time by Tag</h2>
-        <button class="modal-close" data-action="click->pomodoro-timer#closeTagStats" aria-label="Close">×</button>
-      </div>
+  <!-- Stats Modal -->
+  <div class="modal hidden" data-pomodoro-timer-target="tagStatsModal" data-action="click->pomodoro-timer#handleModalClick">
+    <div class="modal-card">
+      <header class="modal-header">
+        <h2>Time by Tag</h2>
+        <button class="modal-close" data-action="click->pomodoro-timer#closeTagStats">×</button>
+      </header>
       <div class="modal-body">
         <% if @tag_statistics.empty? %>
-          <div class="empty-chart-state">
-            <div class="empty-chart-placeholder">
-              <svg viewBox="0 0 100 100" class="empty-chart-icon">
-                <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" stroke-width="8"/>
-                <path d="M50 10 A40 40 0 0 1 90 50" fill="none" stroke="#d1d5db" stroke-width="8" stroke-linecap="round"/>
-              </svg>
-            </div>
-            <p class="empty-chart-message">Complete your first pomodoro with a tag to start tracking time</p>
+          <div class="empty-stats">
+            <svg class="empty-stats-icon" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="4" opacity="0.2"/>
+              <path d="M50 10 A40 40 0 0 1 90 50" fill="none" stroke="currentColor" stroke-width="4" opacity="0.4"/>
+            </svg>
+            <p>Complete pomodoros with tags to see your time distribution</p>
           </div>
         <% else %>
-          <div class="pie-chart-container" data-pomodoro-timer-target="pieChartContainer">
-            <canvas data-pomodoro-timer-target="pieChart" width="300" height="300"></canvas>
+          <div class="chart-container" data-pomodoro-timer-target="pieChartContainer">
+            <canvas data-pomodoro-timer-target="pieChart" width="280" height="280"></canvas>
           </div>
-          <div class="tag-stats-legend" data-pomodoro-timer-target="tagStatsLegend">
+          <div class="legend" data-pomodoro-timer-target="tagStatsLegend">
             <% total = @tag_statistics.sum { |s| s[:count] } %>
             <% @tag_statistics.each_with_index do |stat, index| %>
               <div class="legend-item">
-                <span class="legend-color" data-color-index="<%= index %>"></span>
+                <span class="legend-dot" data-color-index="<%= index %>"></span>
                 <span class="legend-label"><%= stat[:tag] %></span>
-                <span class="legend-value"><%= stat[:count] %> (<%= ((stat[:count].to_f / total) * 100).round(1) %>%)</span>
+                <span class="legend-value"><%= ((stat[:count].to_f / total) * 100).round %>%</span>
               </div>
             <% end %>
           </div>
         <% end %>
       </div>
     </div>
+  </div>
+
+  <!-- Tag Manager Modal -->
+  <div class="modal hidden" data-pomodoro-timer-target="tagManagerModal" data-action="click->pomodoro-timer#handleTagManagerClick">
+    <div class="modal-card modal-card-sm">
+      <header class="modal-header">
+        <h2>Manage Tags</h2>
+        <button class="modal-close" data-action="click->pomodoro-timer#closeTagManager">×</button>
+      </header>
+      <div class="modal-body">
+        <!-- Add New Tag -->
+        <div class="tag-input-row">
+          <input 
+            type="text" 
+            class="input" 
+            placeholder="New tag name..." 
+            data-pomodoro-timer-target="newTagInput"
+            data-action="keydown->pomodoro-timer#handleNewTagKeydown"
+          />
+          <button class="btn btn-sm" data-action="click->pomodoro-timer#addNewTagFromManager">Add</button>
+        </div>
+        
+        <!-- Tag List -->
+        <div class="tag-manager-list" data-pomodoro-timer-target="tagManagerList">
+          <div class="loading-state">
+            <div class="spinner"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Where Was I Modal -->
+  <div class="modal hidden" data-pomodoro-timer-target="whereWasIModal" data-action="click->pomodoro-timer#handleWhereWasIModalClick">
+    <div class="modal-card modal-card-sm">
+      <header class="modal-header">
+        <h2>Where was I?</h2>
+        <button class="modal-close" data-action="click->pomodoro-timer#closeWhereWasI">×</button>
+      </header>
+      <div class="modal-body">
+        <textarea 
+          class="input textarea" 
+          placeholder="Jot down where you left off..." 
+          data-pomodoro-timer-target="whereWasIInput"
+          data-action="keydown->pomodoro-timer#handleWhereWasIKeydown"
+          rows="4"
+        ></textarea>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" data-action="click->pomodoro-timer#skipWhereWasI">Skip</button>
+          <button class="btn btn-primary" data-action="click->pomodoro-timer#submitWhereWasI">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Post-it Note -->
+  <div class="postit hidden" data-pomodoro-timer-target="postit">
+    <button class="postit-close" data-action="click->pomodoro-timer#deletePostit">×</button>
+    <div class="postit-title">Where was I?</div>
+    <div class="postit-content" data-pomodoro-timer-target="postitContent"></div>
   </div>
 </div>

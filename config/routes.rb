@@ -35,5 +35,5 @@ Rails.application.routes.draw do
       get :tag_statistics
     end
   end
-  resources :tags, only: [:create]
+  resources :tags, only: [:index, :create, :destroy]
 end

@@ -20,7 +20,7 @@ import { Controller } from "@hotwired/stimulus"
  * - Break ending: Pulse animation before returning to ready
  */
 export default class extends Controller {
-  static targets = ["timer", "status", "startButton", "stopButton", "description", "tagInput", "tagDropdown", "addNewOption", "addNewText", "combobox", "count", "container", "activeTitle", "sidebar", "sidebarToggle", "sidebarToggleIcon", "todayProgress", "progressBar", "tagStatsModal", "pieChart", "pieChartContainer", "tagStatsLegend", "tasksContent", "tasksList", "tasksLoading", "tasksError", "historySection", "historySectionContent", "historySectionIcon", "tasksSection", "tasksSectionContent", "tasksSectionIcon", "calendarSection", "calendarSectionContent", "calendarSectionIcon", "calendarContent", "calendarList", "calendarLoading", "calendarError", "todayPomodorosSection", "todayPomodorosSectionContent", "todayPomodorosSectionIcon", "todayPomodorosList"]
+  static targets = ["timer", "status", "startButton", "stopButton", "description", "tagInput", "tagDropdown", "addNewOption", "addNewText", "combobox", "count", "container", "activeTitle", "sidebar", "sidebarToggle", "sidebarToggleIcon", "todayProgress", "progressBar", "timerRing", "tagStatsModal", "pieChart", "pieChartContainer", "tagStatsLegend", "tasksContent", "tasksList", "tasksLoading", "tasksError", "historySection", "historySectionContent", "historySectionIcon", "tasksSection", "tasksSectionContent", "tasksSectionIcon", "calendarSection", "calendarSectionContent", "calendarSectionIcon", "calendarContent", "calendarList", "calendarLoading", "calendarError", "todayPomodorosSection", "todayPomodorosSectionContent", "todayPomodorosSectionIcon", "todayPomodorosList", "tagManagerModal", "tagManagerList", "newTagInput", "whereWasIModal", "whereWasIInput", "postit", "postitContent", "breakControls", "breakToggles", "breakToggle5", "breakToggle30", "breakToggle60", "endBreakButton"]
   static values = { todayCount: Number, todayDate: String, dailyTarget: Number, tagStatistics: Array, userSignedIn: Boolean, hasTaskList: Boolean }
   
   // Colors for pie chart slices - distinct, accessible palette
@@ -84,6 +84,9 @@ export default class extends Controller {
     if (this.userSignedInValue && !this.calendarLoaded) {
       this.fetchCalendarEvents()
     }
+    
+    // Load any existing "Where was I?" note from localStorage
+    this.loadPostit()
   }
   
   /**
@@ -147,10 +150,7 @@ export default class extends Controller {
     if (this.hasContainerTarget) {
       this.containerTarget.classList.toggle("sidebar-collapsed", this.sidebarCollapsed)
     }
-    
-    if (this.hasSidebarToggleIconTarget) {
-      this.sidebarToggleIconTarget.textContent = this.sidebarCollapsed ? "▶" : "◀"
-    }
+    // SVG icon rotation is handled by CSS
   }
 
   /**
@@ -162,10 +162,7 @@ export default class extends Controller {
     if (this.hasHistorySectionContentTarget) {
       this.historySectionContentTarget.classList.toggle("collapsed", this.historySectionCollapsed)
     }
-    
-    if (this.hasHistorySectionIconTarget) {
-      this.historySectionIconTarget.textContent = this.historySectionCollapsed ? "▶" : "▼"
-    }
+    // SVG icon rotation is handled by CSS based on collapsed state
   }
 
   /**
@@ -177,10 +174,7 @@ export default class extends Controller {
     if (this.hasTasksSectionContentTarget) {
       this.tasksSectionContentTarget.classList.toggle("collapsed", this.tasksSectionCollapsed)
     }
-    
-    if (this.hasTasksSectionIconTarget) {
-      this.tasksSectionIconTarget.textContent = this.tasksSectionCollapsed ? "▶" : "▼"
-    }
+    // SVG icon rotation is handled by CSS
   }
 
   /**
@@ -192,10 +186,7 @@ export default class extends Controller {
     if (this.hasCalendarSectionContentTarget) {
       this.calendarSectionContentTarget.classList.toggle("collapsed", this.calendarSectionCollapsed)
     }
-    
-    if (this.hasCalendarSectionIconTarget) {
-      this.calendarSectionIconTarget.textContent = this.calendarSectionCollapsed ? "▶" : "▼"
-    }
+    // SVG icon rotation is handled by CSS
   }
 
   /**
@@ -207,10 +198,7 @@ export default class extends Controller {
     if (this.hasTodayPomodorosSectionContentTarget) {
       this.todayPomodorosSectionContentTarget.classList.toggle("collapsed", this.todayPomodorosSectionCollapsed)
     }
-    
-    if (this.hasTodayPomodorosSectionIconTarget) {
-      this.todayPomodorosSectionIconTarget.textContent = this.todayPomodorosSectionCollapsed ? "▶" : "▼"
-    }
+    // SVG icon rotation is handled by CSS
   }
 
   /**
@@ -222,7 +210,7 @@ export default class extends Controller {
     
     // Store references BEFORE the async call (event.currentTarget changes after await)
     const button = event.currentTarget
-    const itemEl = button.closest(".today-pomodoro-item")
+    const itemEl = button.closest(".pomodoro-item")
     const pomodoroId = button.dataset.pomodoroId
     
     console.log("[Pomodoro] Deleting pomodoro:", pomodoroId, "Element:", itemEl)
@@ -268,12 +256,10 @@ export default class extends Controller {
           
           // Check if list is now empty
           if (this.hasTodayPomodorosListTarget) {
-            const remainingItems = this.todayPomodorosListTarget.querySelectorAll(".today-pomodoro-item")
+            const remainingItems = this.todayPomodorosListTarget.querySelectorAll(".pomodoro-item")
             if (remainingItems.length === 0) {
               this.todayPomodorosListTarget.innerHTML = `
-                <div class="today-pomodoros-empty">
-                  <p>No pomodoros completed today</p>
-                </div>
+                <div class="empty-message">No pomodoros yet today</div>
               `
             }
           }
@@ -298,51 +284,40 @@ export default class extends Controller {
     // Try to find the list element directly if Stimulus target isn't available
     let listEl = this.hasTodayPomodorosListTarget 
       ? this.todayPomodorosListTarget 
-      : document.querySelector(".today-pomodoros-list")
+      : document.querySelector(".pomodoro-list")
     
     console.log("[Pomodoro] List element found:", !!listEl)
     
     if (!listEl) {
-      console.error("[Pomodoro] Cannot find today-pomodoros-list element!")
+      console.error("[Pomodoro] Cannot find pomodoro-list element!")
       return
     }
     
     // Ensure the sidebar is expanded
-    const sidebar = document.querySelector(".sidebar-column")
+    const sidebar = document.querySelector(".sidebar")
     if (sidebar && sidebar.classList.contains("collapsed")) {
       sidebar.classList.remove("collapsed")
     }
     
     // Ensure the Today's Pomodoros section is expanded
     const sectionContent = document.querySelector('[data-pomodoro-timer-target="todayPomodorosSectionContent"]')
-    const sectionIcon = document.querySelector('[data-pomodoro-timer-target="todayPomodorosSectionIcon"]')
     if (sectionContent && sectionContent.classList.contains("collapsed")) {
       sectionContent.classList.remove("collapsed")
-      if (sectionIcon) sectionIcon.textContent = "▼"
     }
     
     // Remove empty message if present
-    const emptyEl = listEl.querySelector(".today-pomodoros-empty")
+    const emptyEl = listEl.querySelector(".empty-message")
     if (emptyEl) {
       console.log("[Pomodoro] Removing empty message")
       emptyEl.remove()
     }
     
-    // Create new item HTML
+    // Create new item HTML (new design)
     const itemHtml = `
-      <div class="today-pomodoro-item" data-pomodoro-id="${pomodoro.id}">
-        <div class="pomodoro-item-content">
-          <span class="pomodoro-item-time">${this.escapeHtml(pomodoro.started_at || "")}</span>
-          <span class="pomodoro-item-title">${this.escapeHtml(pomodoro.description || "Untitled")}</span>
-        </div>
-        <button 
-          class="pomodoro-item-delete" 
-          data-action="click->pomodoro-timer#deletePomodoro"
-          data-pomodoro-id="${pomodoro.id}"
-          aria-label="Delete pomodoro"
-        >
-          ×
-        </button>
+      <div class="pomodoro-item" data-pomodoro-id="${pomodoro.id}">
+        <span class="pomodoro-time">${this.escapeHtml(pomodoro.started_at || "")}</span>
+        <span class="pomodoro-title">${this.escapeHtml(pomodoro.description || "Untitled")}</span>
+        <button class="pomodoro-delete" data-action="click->pomodoro-timer#deletePomodoro" data-pomodoro-id="${pomodoro.id}">×</button>
       </div>
     `
     
@@ -352,10 +327,10 @@ export default class extends Controller {
     console.log("[Pomodoro] Pomodoro item added successfully!")
     
     // Flash the new item to make it visible
-    const newItem = listEl.querySelector(".today-pomodoro-item")
+    const newItem = listEl.querySelector(".pomodoro-item")
     if (newItem) {
       newItem.style.transition = "background-color 0.3s"
-      newItem.style.backgroundColor = "rgba(34, 197, 94, 0.3)"
+      newItem.style.backgroundColor = "rgba(34, 197, 94, 0.15)"
       setTimeout(() => {
         newItem.style.backgroundColor = ""
       }, 1000)
@@ -874,70 +849,56 @@ export default class extends Controller {
       console.log("[Pomodoro] Count updated")
 
       // Determine break type and duration
-      const { isLongBreak, duration, durationMinutes } = this.determineBreak()
-      console.log("[Pomodoro] Break determined:", { isLongBreak, duration, durationMinutes })
+      const { duration, durationMinutes } = this.determineBreak()
+      console.log("[Pomodoro] Break determined:", { duration, durationMinutes })
 
       // Show notification
       this.showNotification(
         "Pomodoro complete",
-        isLongBreak
-          ? `${durationMinutes} minute long break.`
-          : `${durationMinutes} minute break.`
+        `${durationMinutes} minute break. Use toggles to adjust.`
       )
 
       // Start break automatically
       console.log("[Pomodoro] Starting break...")
       this.state = "break_running"
       this.secondsRemaining = duration
+      this.currentBreakDuration = duration // Store for timer ring progress
+      this.breakStartedAt = Date.now() // Track when break started for duration changes
+      this.selectedBreakMinutes = 5 // Default selection
+      this.updateBreakToggles()
       this.updateUI()
       this.startTimer()
       console.log("[Pomodoro] Break started, state:", this.state)
+      
+      // Show "Where was I?" modal after break starts
+      this.showWhereWasI()
     } catch (error) {
       console.error("[Pomodoro] Error in completePomodoro:", error)
       // Still try to start break even if there was an error
       this.state = "break_running"
       this.secondsRemaining = 5 * 60 // Default to 5 min break
+      this.currentBreakDuration = 5 * 60
+      this.breakStartedAt = Date.now()
+      this.selectedBreakMinutes = 5
+      this.updateBreakToggles()
       this.updateUI()
       this.startTimer()
+      
+      // Still show "Where was I?" modal even on error
+      this.showWhereWasI()
     }
   }
 
   /**
-   * Determine which type of break and its duration
-   *
-   * Long break rules:
-   * - Occurs every 3 completed pomodoros (when completedToday % 3 === 0)
-   * - Duration cycles through [30, 60, 30] minutes based on long break index
-   *
-   * Long break index calculation:
-   * - After 3 pomodoros: index = (3/3 - 1) % 3 = 0 → 30 min
-   * - After 6 pomodoros: index = (6/3 - 1) % 3 = 1 → 60 min
-   * - After 9 pomodoros: index = (9/3 - 1) % 3 = 2 → 30 min
-   * - After 12 pomodoros: index = (12/3 - 1) % 3 = 0 → 30 min (cycle repeats)
+   * Determine break duration - always defaults to 5 minutes
+   * User can adjust via toggle buttons during break
    */
   determineBreak() {
-    // Check if this is a long break (every 3 pomodoros)
-    const isLongBreak = this.completedToday % 3 === 0
-
-    if (isLongBreak) {
-      // Calculate which long break this is (0-indexed)
-      // After 3 pomodoros: longBreakNumber = 1, index = 0
-      // After 6 pomodoros: longBreakNumber = 2, index = 1
-      // After 9 pomodoros: longBreakNumber = 3, index = 2
-      // After 12 pomodoros: longBreakNumber = 4, index = 0 (cycle)
-      const longBreakNumber = Math.floor(this.completedToday / 3)
-      const longBreakIndex = (longBreakNumber - 1) % 3
-
-      const duration = this.constructor.LONG_BREAK_DURATIONS[longBreakIndex]
-      const durationMinutes = duration / 60
-
-      return { isLongBreak: true, duration, durationMinutes }
-    }
-
+    const duration = this.constructor.SHORT_BREAK_DURATION // Always 5 min default
     return {
       isLongBreak: false,
-      duration: this.constructor.SHORT_BREAK_DURATION,
-      durationMinutes: this.constructor.SHORT_BREAK_DURATION / 60
+      duration,
+      durationMinutes: duration / 60
     }
   }
 
@@ -958,8 +919,74 @@ export default class extends Controller {
       this.state = "ready"
       this.secondsRemaining = this.constructor.POMODORO_DURATION
       this.pomodoroStartedAt = null
+      this.breakStartedAt = null
+      this.selectedBreakMinutes = 5
       this.updateUI()
     }, 1500) // 1.5 second delay for animation
+  }
+
+  /**
+   * Set the break duration when user clicks a toggle button
+   * Preserves elapsed time when switching durations
+   */
+  setBreakDuration(event) {
+    if (this.state !== "break_running") return
+    
+    const newDurationMinutes = parseInt(event.currentTarget.dataset.duration, 10)
+    const newDurationSeconds = newDurationMinutes * 60
+    
+    // Calculate elapsed time since break started
+    const elapsedMs = Date.now() - this.breakStartedAt
+    const elapsedSeconds = Math.floor(elapsedMs / 1000)
+    
+    // Calculate new remaining time (new duration minus elapsed)
+    const newRemaining = Math.max(0, newDurationSeconds - elapsedSeconds)
+    
+    console.log(`[Pomodoro] Changing break from ${this.selectedBreakMinutes}m to ${newDurationMinutes}m, elapsed: ${elapsedSeconds}s, new remaining: ${newRemaining}s`)
+    
+    // Update state
+    this.selectedBreakMinutes = newDurationMinutes
+    this.currentBreakDuration = newDurationSeconds
+    this.secondsRemaining = newRemaining
+    
+    // Update UI
+    this.updateBreakToggles()
+    this.updateDisplay()
+    this.updateTimerRing()
+    
+    // If new remaining time is 0 or less, complete the break
+    if (newRemaining <= 0) {
+      this.stopTimer()
+      this.completeBreak()
+    }
+  }
+
+  /**
+   * Update the visual state of break toggle buttons
+   */
+  updateBreakToggles() {
+    const minutes = this.selectedBreakMinutes || 5
+    
+    if (this.hasBreakToggle5Target) {
+      this.breakToggle5Target.classList.toggle("active", minutes === 5)
+    }
+    if (this.hasBreakToggle30Target) {
+      this.breakToggle30Target.classList.toggle("active", minutes === 30)
+    }
+    if (this.hasBreakToggle60Target) {
+      this.breakToggle60Target.classList.toggle("active", minutes === 60)
+    }
+  }
+
+  /**
+   * End the current break early (user clicked "End Break" button)
+   */
+  endBreakEarly() {
+    if (this.state !== "break_running") return
+    
+    console.log("[Pomodoro] User ended break early")
+    this.stopTimer()
+    this.completeBreak()
   }
 
   /**
@@ -1080,20 +1107,40 @@ export default class extends Controller {
   updateVisualState() {
     if (!this.hasContainerTarget) return
 
-    // Remove all state classes
-    this.containerTarget.classList.remove("focus-mode", "break-mode", "ready-mode")
-
-    // Add appropriate state class
+    // Set data-state attribute for CSS-driven visual changes
     switch (this.state) {
       case "pomodoro_running":
-        this.containerTarget.classList.add("focus-mode")
+        this.containerTarget.dataset.state = "focus"
         break
       case "break_running":
-        this.containerTarget.classList.add("break-mode")
+        this.containerTarget.dataset.state = "break"
         break
       default:
-        this.containerTarget.classList.add("ready-mode")
+        this.containerTarget.dataset.state = "ready"
     }
+    
+    // Update timer ring progress
+    this.updateTimerRing()
+  }
+  
+  /**
+   * Update the circular timer ring progress
+   */
+  updateTimerRing() {
+    if (!this.hasTimerRingTarget) return
+    
+    const circumference = 2 * Math.PI * 90 // radius = 90
+    let progress = 0
+    
+    if (this.state === "pomodoro_running") {
+      progress = 1 - (this.secondsRemaining / this.constructor.POMODORO_DURATION)
+    } else if (this.state === "break_running") {
+      const breakDuration = this.currentBreakDuration || 5 * 60
+      progress = 1 - (this.secondsRemaining / breakDuration)
+    }
+    
+    const offset = circumference * (1 - progress)
+    this.timerRingTarget.style.strokeDashoffset = offset
   }
 
   /**
@@ -1115,6 +1162,11 @@ export default class extends Controller {
     // Stop button: visible only during pomodoro
     if (this.hasStopButtonTarget) {
       this.stopButtonTarget.classList.toggle("hidden", !isPomodoroRunning)
+    }
+
+    // Break controls (end break button + duration toggles): visible only during break
+    if (this.hasBreakControlsTarget) {
+      this.breakControlsTarget.classList.toggle("hidden", !isBreakRunning)
     }
 
     // Update form inputs
@@ -1407,13 +1459,15 @@ export default class extends Controller {
     this.updateButtons()
     this.updateActiveTitle()
 
-    // Update status text
+    // Update status text - minimal, elegant labels
     const statusMap = {
-      ready: "Ready to start",
-      pomodoro_running: "Focus time",
-      break_running: "Break time"
+      ready: "Ready",
+      pomodoro_running: "Focus",
+      break_running: "Break"
     }
-    this.statusTarget.textContent = statusMap[this.state] || ""
+    if (this.hasStatusTarget) {
+      this.statusTarget.textContent = statusMap[this.state] || ""
+    }
   }
 
   // ===========================================
@@ -1437,14 +1491,12 @@ export default class extends Controller {
     if (stats.length === 0) {
       // Show empty state
       modalBody.innerHTML = `
-        <div class="empty-chart-state">
-          <div class="empty-chart-placeholder">
-            <svg viewBox="0 0 100 100" class="empty-chart-icon">
-              <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" stroke-width="8"/>
-              <path d="M50 10 A40 40 0 0 1 90 50" fill="none" stroke="#d1d5db" stroke-width="8" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <p class="empty-chart-message">Complete your first pomodoro with a tag to start tracking time</p>
+        <div class="empty-stats">
+          <svg class="empty-stats-icon" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="4" opacity="0.2"/>
+            <path d="M50 10 A40 40 0 0 1 90 50" fill="none" stroke="currentColor" stroke-width="4" opacity="0.4"/>
+          </svg>
+          <p>Complete pomodoros with tags to see your time distribution</p>
         </div>
       `
     } else {
@@ -1452,17 +1504,17 @@ export default class extends Controller {
       const total = stats.reduce((sum, s) => sum + s.count, 0)
       const legendHtml = stats.map((stat, index) => `
         <div class="legend-item">
-          <span class="legend-color" data-color-index="${index}"></span>
+          <span class="legend-dot" data-color-index="${index}"></span>
           <span class="legend-label">${this.escapeHtml(stat.tag)}</span>
-          <span class="legend-value">${stat.count} (${((stat.count / total) * 100).toFixed(1)}%)</span>
+          <span class="legend-value">${Math.round((stat.count / total) * 100)}%</span>
         </div>
       `).join("")
       
       modalBody.innerHTML = `
-        <div class="pie-chart-container" data-pomodoro-timer-target="pieChartContainer">
-          <canvas data-pomodoro-timer-target="pieChart" width="300" height="300"></canvas>
+        <div class="chart-container" data-pomodoro-timer-target="pieChartContainer">
+          <canvas data-pomodoro-timer-target="pieChart" width="280" height="280"></canvas>
         </div>
-        <div class="tag-stats-legend" data-pomodoro-timer-target="tagStatsLegend">
+        <div class="legend" data-pomodoro-timer-target="tagStatsLegend">
           ${legendHtml}
         </div>
       `
@@ -1507,18 +1559,242 @@ export default class extends Controller {
     }
   }
 
+  // ===========================================
+  // Tag Manager Modal
+  // ===========================================
+
+  /**
+   * Open the tag manager modal and load tags
+   */
+  openTagManager() {
+    if (!this.hasTagManagerModalTarget) return
+    
+    this.tagManagerModalTarget.classList.remove("hidden")
+    document.body.style.overflow = "hidden"
+    
+    // Focus the input
+    if (this.hasNewTagInputTarget) {
+      this.newTagInputTarget.value = ""
+      this.newTagInputTarget.focus()
+    }
+    
+    // Load tags
+    this.loadTags()
+  }
+
+  /**
+   * Close the tag manager modal
+   */
+  closeTagManager() {
+    if (!this.hasTagManagerModalTarget) return
+    
+    this.tagManagerModalTarget.classList.add("hidden")
+    document.body.style.overflow = ""
+  }
+
+  /**
+   * Handle clicks on the tag manager modal overlay
+   */
+  handleTagManagerClick(event) {
+    if (event.target === this.tagManagerModalTarget) {
+      this.closeTagManager()
+    }
+  }
+
+  /**
+   * Handle Enter key in new tag input
+   */
+  handleNewTagKeydown(event) {
+    if (event.key === "Enter") {
+      event.preventDefault()
+      this.addNewTagFromManager()
+    }
+  }
+
+  /**
+   * Load all tags from the server
+   */
+  async loadTags() {
+    if (!this.hasTagManagerListTarget) return
+    
+    // Show loading
+    this.tagManagerListTarget.innerHTML = `
+      <div class="loading-state">
+        <div class="spinner"></div>
+      </div>
+    `
+    
+    try {
+      const response = await fetch("/tags", {
+        headers: { "Accept": "application/json" }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        this.renderTagList(data.tags || [])
+      } else {
+        this.tagManagerListTarget.innerHTML = `
+          <div class="tag-manager-empty">Failed to load tags</div>
+        `
+      }
+    } catch (error) {
+      console.error("[Pomodoro] Error loading tags:", error)
+      this.tagManagerListTarget.innerHTML = `
+        <div class="tag-manager-empty">Failed to load tags</div>
+      `
+    }
+  }
+
+  /**
+   * Render the tag list in the modal
+   */
+  renderTagList(tags) {
+    if (!this.hasTagManagerListTarget) return
+    
+    if (tags.length === 0) {
+      this.tagManagerListTarget.innerHTML = `
+        <div class="tag-manager-empty">No tags yet. Add one above!</div>
+      `
+      return
+    }
+    
+    const html = tags.map(tag => `
+      <div class="tag-manager-item" data-tag-id="${tag.id}">
+        <div>
+          <span class="tag-manager-name">${this.escapeHtml(tag.name)}</span>
+          <span class="tag-manager-count">${tag.pomodoro_count} pomodoro${tag.pomodoro_count !== 1 ? 's' : ''}</span>
+        </div>
+        <button 
+          class="tag-manager-delete" 
+          data-action="click->pomodoro-timer#deleteTag"
+          data-tag-id="${tag.id}"
+          data-tag-name="${this.escapeHtml(tag.name)}"
+          aria-label="Delete tag"
+        >×</button>
+      </div>
+    `).join("")
+    
+    this.tagManagerListTarget.innerHTML = html
+  }
+
+  /**
+   * Add a new tag from the manager modal
+   */
+  async addNewTagFromManager() {
+    if (!this.hasNewTagInputTarget) return
+    
+    const name = this.newTagInputTarget.value.trim()
+    if (!name) return
+    
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+    
+    try {
+      const response = await fetch("/tags", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({ name })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        
+        // Clear input
+        this.newTagInputTarget.value = ""
+        
+        // Reload tag list
+        this.loadTags()
+        
+        // Also add to the combobox dropdown if it's a new tag
+        if (data.is_new && data.tag) {
+          this.addTagToDropdown(data.tag.name)
+        }
+      }
+    } catch (error) {
+      console.error("[Pomodoro] Error adding tag:", error)
+    }
+  }
+
+  /**
+   * Delete a tag
+   */
+  async deleteTag(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    
+    const button = event.currentTarget
+    const tagId = button.dataset.tagId
+    const tagName = button.dataset.tagName
+    
+    if (!tagId) return
+    
+    // Confirm deletion if tag has pomodoros
+    const itemEl = button.closest(".tag-manager-item")
+    
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+    
+    try {
+      const response = await fetch(`/tags/${tagId}`, {
+        method: "DELETE",
+        headers: {
+          "X-CSRF-Token": csrfToken,
+          "Accept": "application/json"
+        }
+      })
+      
+      if (response.ok) {
+        // Remove from DOM
+        if (itemEl) {
+          itemEl.remove()
+        }
+        
+        // Remove from combobox dropdown
+        this.removeTagFromDropdown(tagName)
+        
+        // Check if list is now empty
+        if (this.hasTagManagerListTarget) {
+          const remaining = this.tagManagerListTarget.querySelectorAll(".tag-manager-item")
+          if (remaining.length === 0) {
+            this.tagManagerListTarget.innerHTML = `
+              <div class="tag-manager-empty">No tags yet. Add one above!</div>
+            `
+          }
+        }
+      }
+    } catch (error) {
+      console.error("[Pomodoro] Error deleting tag:", error)
+    }
+  }
+
+  /**
+   * Remove a tag from the combobox dropdown
+   */
+  removeTagFromDropdown(tagName) {
+    if (!this.hasTagDropdownTarget) return
+    
+    const options = this.tagDropdownTarget.querySelectorAll(".combobox-option")
+    options.forEach(option => {
+      if (option.dataset.tag === tagName) {
+        option.remove()
+      }
+    })
+  }
+
   /**
    * Apply colors to legend items based on their index
    */
   applyLegendColors() {
     // Query legend directly since it may be dynamically added
     const legend = this.hasTagStatsModalTarget 
-      ? this.tagStatsModalTarget.querySelector(".tag-stats-legend")
+      ? this.tagStatsModalTarget.querySelector(".legend")
       : null
     
     if (!legend) return
     
-    const colorDots = legend.querySelectorAll(".legend-color")
+    const colorDots = legend.querySelectorAll(".legend-dot")
     colorDots.forEach((dot, index) => {
       const colorIndex = index % this.constructor.PIE_COLORS.length
       dot.style.backgroundColor = this.constructor.PIE_COLORS[colorIndex]
@@ -1637,5 +1913,124 @@ export default class extends Controller {
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
     ctx.fillText("No data", centerX, centerY)
+  }
+
+  // ===========================================
+  // "Where was I?" Post-it Note Feature
+  // ===========================================
+
+  /**
+   * Show the "Where was I?" modal
+   */
+  showWhereWasI() {
+    if (!this.hasWhereWasIModalTarget) return
+    
+    // Clear previous input
+    if (this.hasWhereWasIInputTarget) {
+      this.whereWasIInputTarget.value = ""
+    }
+    
+    this.whereWasIModalTarget.classList.remove("hidden")
+    document.body.style.overflow = "hidden"
+    
+    // Focus the input after a brief delay for animation
+    setTimeout(() => {
+      if (this.hasWhereWasIInputTarget) {
+        this.whereWasIInputTarget.focus()
+      }
+    }, 100)
+  }
+
+  /**
+   * Close the "Where was I?" modal
+   */
+  closeWhereWasI() {
+    if (!this.hasWhereWasIModalTarget) return
+    
+    this.whereWasIModalTarget.classList.add("hidden")
+    document.body.style.overflow = ""
+  }
+
+  /**
+   * Skip the "Where was I?" prompt
+   */
+  skipWhereWasI() {
+    this.closeWhereWasI()
+  }
+
+  /**
+   * Handle clicks on the "Where was I?" modal overlay
+   */
+  handleWhereWasIModalClick(event) {
+    if (event.target === this.whereWasIModalTarget) {
+      this.closeWhereWasI()
+    }
+  }
+
+  /**
+   * Handle Enter key in "Where was I?" input (Cmd/Ctrl+Enter to submit)
+   */
+  handleWhereWasIKeydown(event) {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault()
+      this.submitWhereWasI()
+    } else if (event.key === "Escape") {
+      event.preventDefault()
+      this.closeWhereWasI()
+    }
+  }
+
+  /**
+   * Submit the "Where was I?" note
+   */
+  submitWhereWasI() {
+    if (!this.hasWhereWasIInputTarget) return
+    
+    const note = this.whereWasIInputTarget.value.trim()
+    
+    if (note) {
+      // Save to localStorage
+      localStorage.setItem("pomodoro_where_was_i", note)
+      
+      // Show the post-it
+      this.showPostit(note)
+    }
+    
+    this.closeWhereWasI()
+  }
+
+  /**
+   * Load any existing post-it from localStorage
+   */
+  loadPostit() {
+    const note = localStorage.getItem("pomodoro_where_was_i")
+    
+    if (note) {
+      this.showPostit(note)
+    }
+  }
+
+  /**
+   * Show the post-it note with content
+   */
+  showPostit(content) {
+    if (!this.hasPostitTarget || !this.hasPostitContentTarget) return
+    
+    this.postitContentTarget.textContent = content
+    this.postitTarget.classList.remove("hidden")
+  }
+
+  /**
+   * Delete/hide the post-it note
+   */
+  deletePostit() {
+    if (!this.hasPostitTarget) return
+    
+    // Remove from localStorage
+    localStorage.removeItem("pomodoro_where_was_i")
+    
+    // Hide the post-it
+    this.postitTarget.classList.add("hidden")
+    this.postitContentTarget.textContent = ""
   }
 }
